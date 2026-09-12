@@ -33,8 +33,8 @@
     <string name="scan_qr_code">Scan QR Code</string>
     <string name="field_name">Profile Name</string>
     <string name="field_server_address">Server Address</string>
-    <string name="field_remote_id">Remote ID</string>
-    <string name="field_local_id">Local ID (optional)</string>
+    <string name="field_remote_id">Remote ID (optional)</string>
+    <string name="field_local_id">Local ID (IPsec identifier)</string>
     <string name="field_username">Username</string>
     <string name="field_password">Password</string>
     <string name="field_preshared_key">Pre-shared Key</string>
@@ -68,7 +68,8 @@
 
     <!-- Validation errors -->
     <string name="error_missing_server_address">Server address is required</string>
-    <string name="error_missing_remote_id">Remote ID is required. If left empty the server address is used, which fails unless it matches the server certificate.</string>
+    <string name="error_remote_id_mismatch">Android always uses the server address as the Remote ID and can\'t set it separately. Enter the server\'s identity (for example the domain in its certificate) as the server address, or leave Remote ID empty.</string>
+    <string name="error_missing_local_id">Local ID (IPsec identifier) is required. Enter the identity the server expects from this phone.</string>
     <string name="error_missing_preshared_key">Pre-shared key is required</string>
     <string name="error_missing_username">Username is required</string>
     <string name="error_missing_password">Password is required</string>

@@ -10,7 +10,8 @@ import java.text.DateFormat
 /** Maps typed validation/certificate failures onto the localized strings. */
 fun ValidationIssue.localized(context: Context): String = when (this) {
     ValidationIssue.MissingServerAddress -> context.getString(R.string.error_missing_server_address)
-    ValidationIssue.MissingRemoteId -> context.getString(R.string.error_missing_remote_id)
+    ValidationIssue.RemoteIdDiffersFromServer -> context.getString(R.string.error_remote_id_mismatch)
+    ValidationIssue.MissingLocalId -> context.getString(R.string.error_missing_local_id)
     ValidationIssue.MissingPresharedKey -> context.getString(R.string.error_missing_preshared_key)
     ValidationIssue.MissingUsername -> context.getString(R.string.error_missing_username)
     ValidationIssue.MissingPassword -> context.getString(R.string.error_missing_password)

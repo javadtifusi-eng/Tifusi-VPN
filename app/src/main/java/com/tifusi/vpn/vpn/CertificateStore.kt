@@ -9,6 +9,7 @@ import java.security.cert.CertificateFactory
 import java.security.cert.CertificateNotYetValidException
 import java.security.cert.X509Certificate
 import java.util.Date
+import javax.security.auth.x500.X500Principal
 
 /**
  * Parsing and validation for the IKEv2 credential material.
@@ -55,6 +56,12 @@ object CertificateStore {
             throw CertificateProblem.Unparseable(e.message)
         } ?: throw CertificateProblem.NotAnX509Certificate
         return toPem(cert)
+    }
+
+    /** The subject CN, used as the default IKE identity for certificate authentication. */
+    fun commonName(certificate: X509Certificate): String? {
+        val subject = certificate.subjectX500Principal.getName(X500Principal.RFC2253)
+        return Regex("(?:^|,)CN=([^,]+)").find(subject)?.groupValues?.get(1)
     }
 
     fun toPem(certificate: X509Certificate): String {

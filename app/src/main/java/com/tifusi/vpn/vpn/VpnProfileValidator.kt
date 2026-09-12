@@ -31,15 +31,17 @@ object VpnProfileValidator {
     }
 
     private fun validateIkev2(profile: VpnProfile, issues: MutableList<ValidationIssue>) {
-        // Android defaults the remote ID to the server address when it is omitted, which only
-        // matches if the server certificate's SAN actually carries that address.
-        if (profile.remoteIdentifier.isNullOrBlank()) {
-            issues += ValidationIssue.MissingRemoteId
+        // Ikev2VpnProfile always uses the server address as the remote IKE identity and has no API
+        // to set it separately, so a Remote ID that differs could never match the server.
+        val remoteId = profile.remoteIdentifier?.trim()
+        if (!remoteId.isNullOrEmpty() && !remoteId.equals(profile.serverAddress.trim(), ignoreCase = true)) {
+            issues += ValidationIssue.RemoteIdDiffersFromServer
         }
 
         when (profile.ikev2AuthType) {
             Ikev2AuthType.PSK -> {
                 if (profile.presharedKey.isNullOrBlank()) issues += ValidationIssue.MissingPresharedKey
+                if (profile.localIdentifier.isNullOrBlank()) issues += ValidationIssue.MissingLocalId
             }
 
             Ikev2AuthType.USERNAME_PASSWORD -> {
@@ -90,16 +92,16 @@ object VpnProfileValidator {
         }
 
         try {
-            if (hasBundle) {
-                val contents = CertificateStore.parsePkcs12(
-                    profile.pkcs12Base64!!,
-                    profile.pkcs12Password,
-                )
-                CertificateStore.validate(contents.userCert, expectCa = false)
+            val userCert = if (hasBundle) {
+                CertificateStore.parsePkcs12(profile.pkcs12Base64!!, profile.pkcs12Password).userCert
             } else {
-                val cert = CertificateStore.parseCertificate(profile.userCertPem!!)
-                CertificateStore.validate(cert, expectCa = false)
                 CertificateStore.parsePrivateKeyPem(profile.userPrivateKeyPem!!)
+                CertificateStore.parseCertificate(profile.userCertPem!!)
+            }
+            CertificateStore.validate(userCert, expectCa = false)
+            // The local IKE identity falls back to the certificate CN, so one of the two must exist.
+            if (profile.localIdentifier.isNullOrBlank() && CertificateStore.commonName(userCert) == null) {
+                issues += ValidationIssue.MissingLocalId
             }
         } catch (e: CertificateProblem) {
             issues += ValidationIssue.BadClientCertificate(e)
@@ -115,7 +117,8 @@ object VpnProfileValidator {
 
 sealed class ValidationIssue(val isBlocking: Boolean) {
     object MissingServerAddress : ValidationIssue(true)
-    object MissingRemoteId : ValidationIssue(true)
+    object RemoteIdDiffersFromServer : ValidationIssue(true)
+    object MissingLocalId : ValidationIssue(true)
     object MissingPresharedKey : ValidationIssue(true)
     object MissingUsername : ValidationIssue(true)
     object MissingPassword : ValidationIssue(true)

@@ -46,10 +46,17 @@ class Ikev2VpnManager(private val context: Context) {
     }
 
     private fun buildIkev2Profile(profile: VpnProfile): Ikev2VpnProfile {
-        val remoteId = profile.remoteIdentifier?.takeIf { it.isNotBlank() } ?: profile.serverAddress
-        val builder = Ikev2VpnProfile.Builder(profile.serverAddress, remoteId)
+        // Loaded up front because the default local identity comes from the client certificate.
+        val credentials = if (profile.ikev2AuthType == Ikev2AuthType.CERTIFICATE) {
+            loadClientCredentials(profile)
+        } else {
+            null
+        }
 
-        profile.localIdentifier?.takeIf { it.isNotBlank() }?.let { builder.setLocalId(it) }
+        // The second Builder argument is the *local* (client) IKE identity. Ikev2VpnProfile has no
+        // remote-identity setter: the platform always uses the server address as the remote ID,
+        // which is why VpnProfileValidator requires a Remote ID to match the server address.
+        val builder = Ikev2VpnProfile.Builder(profile.serverAddress, localIdentity(profile, credentials))
 
         // A pinned server CA is what makes a self-signed server certificate trustable. When it is
         // absent the platform falls back to the system CA store, which only works for a publicly
@@ -74,17 +81,30 @@ class Ikev2VpnManager(private val context: Context) {
             )
 
             Ikev2AuthType.CERTIFICATE -> {
-                val credentials = loadClientCredentials(profile)
+                val clientCredentials = requireNotNull(credentials)
                 builder.setAuthDigitalSignature(
-                    credentials.userCert,
-                    credentials.privateKey,
+                    clientCredentials.userCert,
+                    clientCredentials.privateKey,
                     // Prefer the explicitly imported CA; otherwise use the one bundled in the p12.
-                    serverCa ?: credentials.caCert,
+                    serverCa ?: clientCredentials.caCert,
                 )
             }
         }
 
         return builder.build()
+    }
+
+    private fun localIdentity(profile: VpnProfile, credentials: CertificateStore.Pkcs12Contents?): String {
+        profile.localIdentifier?.takeIf { it.isNotBlank() }?.let { return it.trim() }
+        return when (profile.ikev2AuthType) {
+            Ikev2AuthType.USERNAME_PASSWORD -> profile.username.orEmpty()
+            // Servers such as strongSwan match the client ID against its certificate, so the CN
+            // is the natural default.
+            Ikev2AuthType.CERTIFICATE ->
+                credentials?.userCert?.let(CertificateStore::commonName).orEmpty()
+            // VpnProfileValidator rejects a PSK profile without a local ID before it reaches here.
+            Ikev2AuthType.PSK -> ""
+        }
     }
 
     /**

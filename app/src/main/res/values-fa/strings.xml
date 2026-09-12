@@ -33,8 +33,8 @@
     <string name="scan_qr_code">اسکن بارکد</string>
     <string name="field_name">نام پروفایل</string>
     <string name="field_server_address">آدرس سرور</string>
-    <string name="field_remote_id">شناسه سرور (Remote ID)</string>
-    <string name="field_local_id">شناسه محلی (اختیاری)</string>
+    <string name="field_remote_id">شناسه سرور (Remote ID، اختیاری)</string>
+    <string name="field_local_id">شناسه محلی (IPsec identifier)</string>
     <string name="field_username">نام کاربری</string>
     <string name="field_password">رمز عبور</string>
     <string name="field_preshared_key">کلید مشترک</string>
@@ -68,7 +68,8 @@
 
     <!-- Validation errors -->
     <string name="error_missing_server_address">آدرس سرور الزامی است</string>
-    <string name="error_missing_remote_id">شناسه سرور (Remote ID) الزامی است. اگر خالی بماند آدرس سرور استفاده می‌شود و اگر با گواهی سرور یکی نباشد اتصال برقرار نمی‌شود.</string>
+    <string name="error_remote_id_mismatch">اندروید همیشه آدرس سرور را به‌عنوان Remote ID استفاده می‌کند و امکان تنظیم جداگانه ندارد. شناسه‌ی سرور (مثلاً دامنه‌ی داخل گواهی آن) را به‌عنوان آدرس سرور وارد کنید، یا Remote ID را خالی بگذارید.</string>
+    <string name="error_missing_local_id">شناسه محلی (IPsec identifier) الزامی است. همان شناسه‌ای را وارد کنید که سرور از این گوشی انتظار دارد.</string>
     <string name="error_missing_preshared_key">کلید مشترک الزامی است</string>
     <string name="error_missing_username">نام کاربری الزامی است</string>
     <string name="error_missing_password">رمز عبور الزامی است</string>

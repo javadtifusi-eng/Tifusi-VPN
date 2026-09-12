@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">تیفوسی وی‌پی‌ان</string>
+
+    <!-- Home -->
+    <string name="status_connected">متصل</string>
+    <string name="status_connecting">در حال اتصال…</string>
+    <string name="status_disconnected">متصل نیست</string>
+    <string name="action_connect">اتصال</string>
+    <string name="action_disconnect">قطع اتصال</string>
+    <string name="select_protocol">انتخاب پروتکل</string>
+    <string name="no_profile_selected">سروری انتخاب نشده</string>
+
+    <!-- Protocols -->
+    <string name="protocol_ikev2">IKEv2</string>
+    <string name="protocol_ikev2_tagline">پایدار و سریع</string>
+    <string name="protocol_l2tp">L2TP</string>
+    <string name="protocol_l2tp_tagline">مطمئن و امن</string>
+    <string name="protocol_pptp">PPTP</string>
+    <string name="protocol_pptp_tagline">سریع و سبک</string>
+    <string name="protocol_wireguard">WireGuard</string>
+    <string name="protocol_wireguard_tagline">جدید و قدرتمند</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">خانه</string>
+    <string name="nav_servers">سرورها</string>
+    <string name="nav_profile">پروفایل</string>
+    <string name="nav_services">سرویس‌ها</string>
+
+    <!-- Add server -->
+    <string name="add_server">افزودن سرور</string>
+    <string name="add_manually">ورود دستی</string>
+    <string name="scan_qr_code">اسکن بارکد</string>
+    <string name="field_name">نام پروفایل</string>
+    <string name="field_server_address">آدرس سرور</string>
+    <string name="field_remote_id">شناسه سرور (Remote ID)</string>
+    <string name="field_local_id">شناسه محلی (اختیاری)</string>
+    <string name="field_username">نام کاربری</string>
+    <string name="field_password">رمز عبور</string>
+    <string name="field_preshared_key">کلید مشترک</string>
+    <string name="field_ipsec_preshared_key">کلید مشترک IPsec</string>
+    <string name="field_auth_type">نوع احراز هویت</string>
+    <string name="auth_psk">کلید مشترک</string>
+    <string name="auth_username_password">نام کاربری / رمز عبور</string>
+    <string name="auth_certificate">گواهی</string>
+    <string name="action_save">ذخیره</string>
+    <string name="action_cancel">انصراف</string>
+    <string name="action_delete">حذف</string>
+
+    <!-- Certificates -->
+    <string name="server_ca_certificate">گواهی CA سرور</string>
+    <string name="client_certificate">گواهی کلاینت</string>
+    <string name="import_p12">وارد کردن فایل ‎.p12‎ / ‎.pfx‎</string>
+    <string name="paste_pem">چسباندن متن PEM</string>
+    <string name="field_p12_password">رمز فایل ‎.p12‎</string>
+    <string name="cert_valid_until">معتبر تا %1$s</string>
+    <string name="cert_issued_to">صادر شده برای: %1$s</string>
+    <string name="cert_ok">گواهی معتبر است</string>
+
+    <!-- WireGuard fields -->
+    <string name="field_wg_private_key">کلید خصوصی</string>
+    <string name="field_wg_peer_public_key">کلید عمومی سرور</string>
+    <string name="field_wg_preshared_key">کلید مشترک (اختیاری)</string>
+    <string name="field_wg_address">آدرس</string>
+    <string name="field_wg_dns">سرورهای DNS</string>
+    <string name="field_wg_port">پورت</string>
+    <string name="field_wg_allowed_ips">آی‌پی‌های مجاز</string>
+
+    <!-- Validation errors -->
+    <string name="error_missing_server_address">آدرس سرور الزامی است</string>
+    <string name="error_missing_remote_id">شناسه سرور (Remote ID) الزامی است. اگر خالی بماند آدرس سرور استفاده می‌شود و اگر با گواهی سرور یکی نباشد اتصال برقرار نمی‌شود.</string>
+    <string name="error_missing_preshared_key">کلید مشترک الزامی است</string>
+    <string name="error_missing_username">نام کاربری الزامی است</string>
+    <string name="error_missing_password">رمز عبور الزامی است</string>
+    <string name="error_missing_client_certificate">گواهی کلاینت و کلید خصوصی الزامی است</string>
+    <string name="error_missing_server_ca">برای احراز هویت با گواهی، گواهی CA سرور الزامی است</string>
+    <string name="error_no_server_ca_pinned">گواهی CA سرور وارد نشده. این حالت فقط وقتی کار می‌کند که سرور گواهی معتبر عمومی داشته باشد.</string>
+    <string name="error_missing_wg_private_key">کلید خصوصی WireGuard الزامی است</string>
+    <string name="error_missing_wg_peer_key">کلید عمومی سرور الزامی است</string>
+    <string name="error_missing_wg_address">آدرس اینترفیس الزامی است</string>
+
+    <!-- Certificate errors -->
+    <string name="cert_error_not_pem">این یک گواهی PEM معتبر نیست (سرتیتر BEGIN CERTIFICATE ندارد)</string>
+    <string name="cert_error_not_x509">فایل یک گواهی X.509 نیست</string>
+    <string name="cert_error_not_pem_key">این یک کلید خصوصی PEM معتبر نیست</string>
+    <string name="cert_error_pkcs1">کلید در قالب PKCS#1 است. با این دستور تبدیلش کنید: openssl pkcs8 -topk8 -nocrypt -in key.pem -out key8.pem</string>
+    <string name="cert_error_unsupported_algorithm">الگوریتم کلید خصوصی پشتیبانی نمی‌شود (فقط RSA و EC)</string>
+    <string name="cert_error_wrong_p12_password">رمز فایل ‎.p12‎ اشتباه است یا فایل خراب است</string>
+    <string name="cert_error_p12_no_key">فایل ‎.p12‎ کلید خصوصی ندارد</string>
+    <string name="cert_error_p12_no_cert">فایل ‎.p12‎ گواهی کلاینت ندارد</string>
+    <string name="cert_error_not_ca">این گواهی، گواهی CA نیست. باید گواهی CA را وارد کنید نه گواهی خود سرور را.</string>
+    <string name="cert_error_expired">گواهی در تاریخ %1$s منقضی شده است</string>
+    <string name="cert_error_not_yet_valid">گواهی تا تاریخ %1$s معتبر نیست</string>
+    <string name="cert_error_unparseable">گواهی خوانده نشد: %1$s</string>
+
+    <!-- Legacy protocol hand-off -->
+    <string name="legacy_title">تنظیم در تنظیمات اندروید</string>
+    <string name="legacy_explanation">اندروید اجازه نمی‌دهد برنامه‌ها مستقیماً L2TP یا PPTP را وصل کنند. روی هر فیلد بزنید تا کپی شود، سپس در صفحه تنظیمات VPN بچسبانید.</string>
+    <string name="open_vpn_settings">باز کردن تنظیمات VPN</string>
+    <string name="copied_to_clipboard">کپی شد</string>
+
+    <!-- Connection failures -->
+    <string name="error_negotiation_failed">سرور اتصال را رد کرد. شناسه سرور (Remote ID)، گواهی CA سرور و اطلاعات ورود را بررسی کنید.</string>
+    <string name="error_timeout">اتصال بعد از ۳۰ ثانیه برقرار نشد. آدرس سرور و باز بودن پورت‌های UDP 500 و 4500 را بررسی کنید.</string>
+    <string name="error_unknown">اتصال ناموفق بود: %1$s</string>
+    <string name="action_dismiss">بستن</string>
+
+    <!-- Servers -->
+    <string name="no_servers_yet">هنوز سروری اضافه نشده. به‌صورت دستی اضافه کنید یا بارکد را اسکن کنید.</string>
+
+    <!-- QR -->
+    <string name="camera_permission_required">برای اسکن بارکد، دسترسی دوربین لازم است</string>
+    <string name="grant_permission">اجازه دادن</string>
+    <string name="qr_unrecognized">این بارکد کانفیگ تیفوسی یا WireGuard نیست</string>
+    <string name="qr_point_camera">دوربین را روی بارکد پنل بگیرید</string>
+
+    <!-- Profile / settings -->
+    <string name="language_system">پیش‌فرض سیستم</string>
+    <string name="language_fa">فارسی</string>
+    <string name="language_en">English</string>
+    <string name="app_version">نسخه %1$s</string>
+    <string name="android_version_note_ok">این گوشی از اتصال خودکار IKEv2 پشتیبانی می‌کند</string>
+
+    <!-- Add/edit form -->
+    <string name="edit_server">ویرایش سرور</string>
+    <string name="action_edit">ویرایش</string>
+    <string name="action_remove">حذف فایل</string>
+    <string name="save_anyway">در هر صورت ذخیره کن</string>
+    <string name="delete_confirm">%1$s حذف شود؟</string>
+    <string name="server_ca_hint">گواهی CA که گواهی سرور را امضا کرده وارد کنید (‎.crt‎، ‎.cer‎ یا ‎.pem‎) یا متن PEM آن را بچسبانید</string>
+    <string name="import_ca_file">وارد کردن فایل CA</string>
+    <string name="client_cert_either">یا فایل ‎.p12‎ را وارد کنید، یا گواهی و کلید خصوصی را جداگانه</string>
+    <string name="import_client_cert">وارد کردن گواهی کلاینت</string>
+    <string name="import_private_key">وارد کردن کلید خصوصی (PKCS#8)</string>
+    <string name="private_key_ok">کلید خصوصی معتبر است</string>
+
+    <!-- Services -->
+    <string name="android_version">اندروید %1$s (API %2$d)</string>
+    <string name="wireguard_supported">WireGuard: اتصال خودکار</string>
+    <string name="legacy_supported">L2TP / PPTP: از طریق تنظیمات اندروید</string>
+
+    <!-- Misc -->
+    <string name="language">زبان</string>
+    <string name="settings">تنظیمات</string>
+    <string name="ikev2_unsupported_version">نسخه اندروید شما از IKEv2 خودکار پشتیبانی نمی‌کند. به جای آن به تنظیمات هدایت می‌شوید.</string>
+</resources>

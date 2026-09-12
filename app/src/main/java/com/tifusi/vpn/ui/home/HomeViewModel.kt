@@ -8,6 +8,7 @@ import com.tifusi.vpn.data.VpnProfileRepository
 import com.tifusi.vpn.vpn.TrafficStats
 import com.tifusi.vpn.vpn.VpnConnectionState
 import com.tifusi.vpn.vpn.VpnController
+import com.tifusi.vpn.vpn.VpnEvents
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProtocol
 import kotlinx.coroutines.Dispatchers
@@ -51,6 +52,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             controller.state.collect { state ->
                 _uiState.update { it.copy(connectionState = state) }
             }
+        }
+
+        viewModelScope.launch {
+            VpnEvents.events.collect(controller::onPlatformEvent)
         }
 
         // Reconciles with the platform and drives the duration and traffic readouts.

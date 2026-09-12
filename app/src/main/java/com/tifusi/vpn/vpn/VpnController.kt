@@ -28,6 +28,7 @@ class VpnController(private val context: Context) {
     private var activeProtocol: VpnProtocol? = null
     private var connectedSinceElapsedMs: Long? = null
     private var connectingSinceElapsedMs: Long? = null
+    private var lastPlatformEvent: PlatformVpnEvent? = null
 
     init {
         // On Android 11-12 there is no profile-state API, so the appearance of a VPN network is
@@ -106,7 +107,21 @@ class VpnController(private val context: Context) {
             SystemClock.elapsedRealtime() - connectingSince > CONNECT_TIMEOUT_MS
         ) {
             if (activeProtocol == VpnProtocol.IKEV2) ikev2Manager?.disconnect()
-            fail(VpnFailure.Timeout)
+            fail(lastPlatformEvent?.let { VpnFailure.Platform(it) } ?: VpnFailure.Timeout)
+        }
+    }
+
+    /** The platform's own report on the IKEv2 profile (Android 13+), via [VpnEventService]. */
+    fun onPlatformEvent(event: PlatformVpnEvent) {
+        if (activeProtocol != VpnProtocol.IKEV2) return
+        val current = _state.value
+        if (current !is VpnConnectionState.Connecting && current !is VpnConnectionState.Connected) return
+        if (event.isRecoverable) {
+            // The platform retries these itself; keep the reason so the timeout can show it.
+            lastPlatformEvent = event
+        } else {
+            ikev2Manager?.disconnect()
+            fail(VpnFailure.Platform(event))
         }
     }
 
@@ -162,6 +177,7 @@ class VpnController(private val context: Context) {
     }
 
     private fun markConnecting() {
+        lastPlatformEvent = null
         connectingSinceElapsedMs = SystemClock.elapsedRealtime()
         _state.value = VpnConnectionState.Connecting
     }
@@ -220,6 +236,8 @@ sealed interface VpnFailure {
     object NegotiationFailed : VpnFailure
 
     object Timeout : VpnFailure
+
+    data class Platform(val event: PlatformVpnEvent) : VpnFailure
 
     data class Unknown(val detail: String?) : VpnFailure
 }

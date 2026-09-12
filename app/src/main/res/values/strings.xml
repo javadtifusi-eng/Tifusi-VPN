@@ -103,6 +103,7 @@
     <string name="error_negotiation_failed">The server rejected the connection. Check the Remote ID, the server CA certificate and the credentials.</string>
     <string name="error_timeout">Connection timed out after 30 seconds. Check the server address and that UDP ports 500 and 4500 are open.</string>
     <string name="error_unknown">Connection failed: %1$s</string>
+    <string name="error_platform">Android reported: %1$s</string>
     <string name="action_dismiss">Dismiss</string>
 
     <!-- Servers -->

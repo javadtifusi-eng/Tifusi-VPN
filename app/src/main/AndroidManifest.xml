@@ -39,6 +39,19 @@
                 android:value="true" />
         </service>
 
+        <!-- The system starts this with the platform IKEv2 VPN's error reports (Android 13+). -->
+        <service
+            android:name=".vpn.VpnEventService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.net.action.VPN_MANAGER_EVENT" />
+                <category android:name="android.net.category.EVENT_IKE_ERROR" />
+                <category android:name="android.net.category.EVENT_NETWORK_ERROR" />
+                <category android:name="android.net.category.EVENT_DEACTIVATED_BY_USER" />
+                <category android:name="android.net.category.EVENT_ALWAYS_ON_STATE_CHANGED" />
+            </intent-filter>
+        </service>
+
         <service
             android:name="com.wireguard.android.backend.GoBackend$VpnService"
             android:permission="android.permission.BIND_VPN_SERVICE"

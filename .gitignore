@@ -9,4 +9,3 @@ captures/
 .cxx/
 *.keystore
 *.jks
-*.p12

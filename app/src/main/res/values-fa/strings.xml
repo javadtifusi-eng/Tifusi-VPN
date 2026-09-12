@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">تیفوسی وی‌پی‌ان</string>
+    <string name="app_name">Tifusi VPN</string>
 
     <!-- Home -->
     <string name="status_connected">متصل</string>
@@ -118,7 +118,6 @@
     <string name="qr_point_camera">دوربین را روی بارکد پنل بگیرید</string>
 
     <!-- Profile / settings -->
-    <string name="language_system">پیش‌فرض سیستم</string>
     <string name="language_fa">فارسی</string>
     <string name="language_en">English</string>
     <string name="app_version">نسخه %1$s</string>

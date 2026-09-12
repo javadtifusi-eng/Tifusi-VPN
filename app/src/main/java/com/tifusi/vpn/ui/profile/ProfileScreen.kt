@@ -26,9 +26,8 @@ import com.tifusi.vpn.R
 import com.tifusi.vpn.ui.theme.TifusiNeonBlue
 
 private val LanguageOptions = listOf(
-    "" to R.string.language_system,
-    "fa" to R.string.language_fa,
     "en" to R.string.language_en,
+    "fa" to R.string.language_fa,
 )
 
 @Composable
@@ -55,13 +54,7 @@ fun ProfileScreen() {
                             selectedTag = tag
                             // AppCompat persists the choice and recreates the activity in that locale,
                             // which also flips layout direction to RTL for Persian.
-                            AppCompatDelegate.setApplicationLocales(
-                                if (tag.isEmpty()) {
-                                    LocaleListCompat.getEmptyLocaleList()
-                                } else {
-                                    LocaleListCompat.forLanguageTags(tag)
-                                }
-                            )
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
                         },
                     )
                     .padding(vertical = 8.dp),

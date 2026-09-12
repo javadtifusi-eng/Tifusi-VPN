@@ -118,7 +118,6 @@
     <string name="qr_point_camera">Point the camera at the QR code from your panel</string>
 
     <!-- Profile / settings -->
-    <string name="language_system">System default</string>
     <string name="language_fa">فارسی</string>
     <string name="language_en">English</string>
     <string name="app_version">Version %1$s</string>

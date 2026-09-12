@@ -3,6 +3,10 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Supplied by CI from a GitHub secret. Absent on a developer machine, where the release build
+// falls back to the debug key so the APK still installs.
+val releaseKeystore: String? = System.getenv("TIFUSI_KEYSTORE")
+
 android {
     namespace = "com.tifusi.vpn"
     compileSdk = 34
@@ -29,9 +33,28 @@ android {
         kotlinCompilerExtensionVersion = "1.5.14"
     }
 
+    signingConfigs {
+        create("release") {
+            releaseKeystore?.let {
+                storeFile = file(it)
+                storeType = "PKCS12"
+                storePassword = System.getenv("TIFUSI_KEYSTORE_PASSWORD")
+                keyAlias = "tifusi"
+                keyPassword = System.getenv("TIFUSI_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Every published APK must carry the same signature, otherwise Android refuses to
+            // install an update over the previous one.
+            signingConfig = if (releaseKeystore != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 

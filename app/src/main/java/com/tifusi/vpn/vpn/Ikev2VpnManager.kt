@@ -144,8 +144,10 @@ class Ikev2VpnManager(private val context: Context) {
 
     /** Observes whether an active network is currently carrying VPN traffic. */
     fun observeConnectionState(onChange: (connected: Boolean) -> Unit): ConnectivityManager.NetworkCallback {
+        // The builder adds NOT_VPN by default, which would make a VPN request unmatchable.
         val request = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
+            .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
             .build()
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) = onChange(true)

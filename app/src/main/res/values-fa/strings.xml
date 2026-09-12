@@ -34,7 +34,7 @@
     <string name="field_name">نام پروفایل</string>
     <string name="field_server_address">آدرس سرور</string>
     <string name="field_remote_id">شناسه سرور (Remote ID، اختیاری)</string>
-    <string name="field_local_id">شناسه محلی (IPsec identifier)</string>
+    <string name="field_local_id">شناسه محلی (اختیاری)</string>
     <string name="field_username">نام کاربری</string>
     <string name="field_password">رمز عبور</string>
     <string name="field_preshared_key">کلید مشترک</string>
@@ -68,8 +68,7 @@
 
     <!-- Validation errors -->
     <string name="error_missing_server_address">آدرس سرور الزامی است</string>
-    <string name="error_remote_id_mismatch">اندروید همیشه آدرس سرور را به‌عنوان Remote ID استفاده می‌کند و امکان تنظیم جداگانه ندارد. شناسه‌ی سرور (مثلاً دامنه‌ی داخل گواهی آن) را به‌عنوان آدرس سرور وارد کنید، یا Remote ID را خالی بگذارید.</string>
-    <string name="error_missing_local_id">شناسه محلی (IPsec identifier) الزامی است. همان شناسه‌ای را وارد کنید که سرور از این گوشی انتظار دارد.</string>
+    <string name="error_missing_local_id">شناسه محلی را وارد کنید: گواهی کلاینت CN ندارد که به‌جای آن استفاده شود.</string>
     <string name="error_missing_preshared_key">کلید مشترک الزامی است</string>
     <string name="error_missing_username">نام کاربری الزامی است</string>
     <string name="error_missing_password">رمز عبور الزامی است</string>
@@ -112,7 +111,10 @@
     <!-- QR -->
     <string name="camera_permission_required">برای اسکن بارکد، دسترسی دوربین لازم است</string>
     <string name="grant_permission">اجازه دادن</string>
-    <string name="qr_unrecognized">این بارکد کانفیگ تیفوسی یا WireGuard نیست</string>
+    <string name="qr_unrecognized">این بارکد، کد وارد کردن IKEv2 یا L2TP پنل تیفوسی یا کانفیگ WireGuard نیست</string>
+    <string name="qr_subscription_link">این لینک اشتراک است. در صفحه‌ی پنل، بارکد داخل کارت IKEv2 یا L2TP را اسکن کنید.</string>
+    <string name="paste_from_panel">چسباندن از پنل</string>
+    <string name="clipboard_unrecognized">کلیپ‌بورد کانفیگ پنل تیفوسی ندارد. اول در پنل، دکمه‌ی «کپی» کارت IKEv2 یا L2TP را بزنید.</string>
     <string name="qr_point_camera">دوربین را روی بارکد پنل بگیرید</string>
 
     <!-- Profile / settings -->

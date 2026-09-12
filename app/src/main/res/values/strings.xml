@@ -34,7 +34,7 @@
     <string name="field_name">Profile Name</string>
     <string name="field_server_address">Server Address</string>
     <string name="field_remote_id">Remote ID (optional)</string>
-    <string name="field_local_id">Local ID (IPsec identifier)</string>
+    <string name="field_local_id">Local ID (optional)</string>
     <string name="field_username">Username</string>
     <string name="field_password">Password</string>
     <string name="field_preshared_key">Pre-shared Key</string>
@@ -68,8 +68,7 @@
 
     <!-- Validation errors -->
     <string name="error_missing_server_address">Server address is required</string>
-    <string name="error_remote_id_mismatch">Android always uses the server address as the Remote ID and can\'t set it separately. Enter the server\'s identity (for example the domain in its certificate) as the server address, or leave Remote ID empty.</string>
-    <string name="error_missing_local_id">Local ID (IPsec identifier) is required. Enter the identity the server expects from this phone.</string>
+    <string name="error_missing_local_id">Enter a Local ID: the client certificate has no CN to use instead.</string>
     <string name="error_missing_preshared_key">Pre-shared key is required</string>
     <string name="error_missing_username">Username is required</string>
     <string name="error_missing_password">Password is required</string>
@@ -112,7 +111,10 @@
     <!-- QR -->
     <string name="camera_permission_required">Camera permission is needed to scan QR codes</string>
     <string name="grant_permission">Grant Permission</string>
-    <string name="qr_unrecognized">This QR code is not a Tifusi VPN or WireGuard config</string>
+    <string name="qr_unrecognized">This isn\'t an IKEv2 or L2TP import code from Tifusi Panel, or a WireGuard config</string>
+    <string name="qr_subscription_link">This is the subscription link. On the panel\'s page, scan the QR code inside the IKEv2 or L2TP card instead.</string>
+    <string name="paste_from_panel">Paste from Panel</string>
+    <string name="clipboard_unrecognized">The clipboard has no Tifusi Panel config. Tap Copy on the IKEv2 or L2TP card in the panel first.</string>
     <string name="qr_point_camera">Point the camera at the QR code from your panel</string>
 
     <!-- Profile / settings -->

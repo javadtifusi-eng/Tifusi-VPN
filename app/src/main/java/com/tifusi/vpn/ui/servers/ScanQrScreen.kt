@@ -43,6 +43,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.tifusi.vpn.R
+import com.tifusi.vpn.qr.ImportResult
 import com.tifusi.vpn.qr.QrConfigParser
 import com.tifusi.vpn.ui.theme.TifusiNeonBlue
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
@@ -70,7 +71,7 @@ fun ScanQrScreen(
         if (!hasPermission) permissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
-    var unrecognized by remember { mutableStateOf(false) }
+    var scanMessage by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = Modifier
@@ -96,18 +97,24 @@ fun ScanQrScreen(
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(20.dp)),
                 onCodeScanned = { raw ->
-                    val profile = QrConfigParser.parse(raw)
-                    if (profile != null) {
-                        onProfileScanned(profile)
-                        true
-                    } else {
-                        unrecognized = true
-                        false
+                    when (val result = QrConfigParser.parse(raw)) {
+                        is ImportResult.Profile -> {
+                            onProfileScanned(result.profile)
+                            true
+                        }
+                        ImportResult.SubscriptionLink -> {
+                            scanMessage = R.string.qr_subscription_link
+                            false
+                        }
+                        ImportResult.Unrecognized -> {
+                            scanMessage = R.string.qr_unrecognized
+                            false
+                        }
                     }
                 },
             )
-            if (unrecognized) {
-                Text(stringResource(R.string.qr_unrecognized), color = MaterialTheme.colorScheme.error)
+            scanMessage?.let {
+                Text(stringResource(it), color = MaterialTheme.colorScheme.error)
             }
         }
 

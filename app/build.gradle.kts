@@ -13,6 +13,12 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
+
+        // Phones only: dropping the emulator (x86) native libraries of WireGuard and ML Kit
+        // roughly halves the APK. armeabi-v7a keeps older 32-bit Samsung models working.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     buildFeatures {

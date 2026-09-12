@@ -58,6 +58,28 @@ object CertificateStore {
         return toPem(cert)
     }
 
+    /**
+     * Picks the trust anchor out of pasted or imported CA text. Tifusi Panel's certificate field is
+     * the server leaf with its CA appended, so the last self-signed block is the CA to pin; a single
+     * certificate is returned as-is so [validate] can reject a leaf picked by mistake.
+     */
+    fun parseCaCertificate(pemBundle: String): X509Certificate {
+        val cleaned = pemBundle.trim()
+        if (!cleaned.contains(PEM_CERT_BEGIN)) {
+            throw CertificateProblem.NotAPemCertificate
+        }
+        val certificates = try {
+            CertificateFactory.getInstance("X.509")
+                .generateCertificates(ByteArrayInputStream(cleaned.toByteArray()))
+                .filterIsInstance<X509Certificate>()
+        } catch (e: Exception) {
+            throw CertificateProblem.Unparseable(e.message)
+        }
+        if (certificates.isEmpty()) throw CertificateProblem.NotAnX509Certificate
+        return certificates.lastOrNull { it.subjectX500Principal == it.issuerX500Principal }
+            ?: certificates.last()
+    }
+
     /** The subject CN, used as the default IKE identity for certificate authentication. */
     fun commonName(certificate: X509Certificate): String? {
         val subject = certificate.subjectX500Principal.getName(X500Principal.RFC2253)

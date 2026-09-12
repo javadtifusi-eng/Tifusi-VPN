@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,6 +54,7 @@ fun ServersScreen(
     onDeleteProfile: (VpnProfile) -> Unit,
     onAddManually: () -> Unit,
     onScanQr: () -> Unit,
+    onPasteFromPanel: () -> Unit,
 ) {
     var pendingDelete by remember { mutableStateOf<VpnProfile?>(null) }
 
@@ -75,6 +77,10 @@ fun ServersScreen(
                 Icon(Icons.Default.QrCodeScanner, contentDescription = null)
                 Text(stringResource(R.string.scan_qr_code), modifier = Modifier.padding(start = 6.dp))
             }
+        }
+        OutlinedButton(onClick = onPasteFromPanel, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.ContentPaste, contentDescription = null)
+            Text(stringResource(R.string.paste_from_panel), modifier = Modifier.padding(start = 6.dp))
         }
 
         if (profiles.isEmpty()) {

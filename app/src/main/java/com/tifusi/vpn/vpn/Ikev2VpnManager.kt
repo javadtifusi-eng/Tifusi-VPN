@@ -54,9 +54,8 @@ class Ikev2VpnManager(private val context: Context) {
         }
 
         // The second Builder argument is the *local* (client) IKE identity. Ikev2VpnProfile has no
-        // remote-identity setter: the platform always uses the server address as the remote ID,
-        // which is why VpnProfileValidator requires a Remote ID to match the server address.
-        val builder = Ikev2VpnProfile.Builder(profile.serverAddress, localIdentity(profile, credentials))
+        // remote-identity setter: the platform always uses the server address as the remote ID.
+        val builder = Ikev2VpnProfile.Builder(connectAddress(profile), localIdentity(profile, credentials))
 
         // A pinned server CA is what makes a self-signed server certificate trustable. When it is
         // absent the platform falls back to the system CA store, which only works for a publicly
@@ -64,7 +63,7 @@ class Ikev2VpnManager(private val context: Context) {
         val serverCa = profile.serverRootCaCertPem
             ?.takeIf { it.isNotBlank() }
             ?.let { pem ->
-                CertificateStore.parseCertificate(pem).also {
+                CertificateStore.parseCaCertificate(pem).also {
                     CertificateStore.validate(it, expectCa = true)
                 }
             }
@@ -102,10 +101,20 @@ class Ikev2VpnManager(private val context: Context) {
             // is the natural default.
             Ikev2AuthType.CERTIFICATE ->
                 credentials?.userCert?.let(CertificateStore::commonName).orEmpty()
-            // VpnProfileValidator rejects a PSK profile without a local ID before it reaches here.
-            Ikev2AuthType.PSK -> ""
+            // Tifusi Panel's PSK mode puts no constraint on the client identity, so any stable
+            // value works; the panel includes a username even in PSK mode.
+            Ikev2AuthType.PSK -> profile.username?.takeIf { it.isNotBlank() } ?: DEFAULT_PSK_IDENTITY
         }
     }
+
+    /**
+     * Because the server address doubles as the remote IKE identity, a Remote ID that differs
+     * from the address can only be honoured by connecting to the Remote ID itself. Tifusi Panel's
+     * own iOS profile does exactly this (RemoteAddress = remote_id), and the Remote ID it hands out
+     * is the server's certificate domain.
+     */
+    private fun connectAddress(profile: VpnProfile): String =
+        profile.remoteIdentifier?.trim()?.takeIf { it.isNotEmpty() } ?: profile.serverAddress.trim()
 
     /**
      * Resolves the client certificate and key from whichever form the user supplied: a PKCS#12
@@ -166,6 +175,8 @@ class Ikev2VpnManager(private val context: Context) {
     }
 
     companion object {
+        private const val DEFAULT_PSK_IDENTITY = "tifusi-vpn"
+
         fun isSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
     }
 }

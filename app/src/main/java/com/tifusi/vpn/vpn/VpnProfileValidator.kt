@@ -31,17 +31,9 @@ object VpnProfileValidator {
     }
 
     private fun validateIkev2(profile: VpnProfile, issues: MutableList<ValidationIssue>) {
-        // Ikev2VpnProfile always uses the server address as the remote IKE identity and has no API
-        // to set it separately, so a Remote ID that differs could never match the server.
-        val remoteId = profile.remoteIdentifier?.trim()
-        if (!remoteId.isNullOrEmpty() && !remoteId.equals(profile.serverAddress.trim(), ignoreCase = true)) {
-            issues += ValidationIssue.RemoteIdDiffersFromServer
-        }
-
         when (profile.ikev2AuthType) {
             Ikev2AuthType.PSK -> {
                 if (profile.presharedKey.isNullOrBlank()) issues += ValidationIssue.MissingPresharedKey
-                if (profile.localIdentifier.isNullOrBlank()) issues += ValidationIssue.MissingLocalId
             }
 
             Ikev2AuthType.USERNAME_PASSWORD -> {
@@ -75,7 +67,7 @@ object VpnProfileValidator {
         }
 
         try {
-            val cert = CertificateStore.parseCertificate(pem)
+            val cert = CertificateStore.parseCaCertificate(pem)
             CertificateStore.validate(cert, expectCa = true)
         } catch (e: CertificateProblem) {
             issues += ValidationIssue.BadServerCa(e)
@@ -117,7 +109,6 @@ object VpnProfileValidator {
 
 sealed class ValidationIssue(val isBlocking: Boolean) {
     object MissingServerAddress : ValidationIssue(true)
-    object RemoteIdDiffersFromServer : ValidationIssue(true)
     object MissingLocalId : ValidationIssue(true)
     object MissingPresharedKey : ValidationIssue(true)
     object MissingUsername : ValidationIssue(true)

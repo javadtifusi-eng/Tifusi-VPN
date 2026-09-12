@@ -1,5 +1,6 @@
 package com.tifusi.vpn.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
@@ -21,6 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,6 +34,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tifusi.vpn.R
+import com.tifusi.vpn.qr.ImportResult
+import com.tifusi.vpn.qr.QrConfigParser
 import com.tifusi.vpn.ui.home.HomeScreen
 import com.tifusi.vpn.ui.home.HomeViewModel
 import com.tifusi.vpn.ui.profile.ProfileScreen
@@ -67,6 +72,8 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
     // Activity-scoped so the QR screen can hand a scanned draft to the edit form.
     val addServerViewModel: AddServerViewModel = viewModel()
+    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
 
     Scaffold(
         containerColor = TifusiBackground,
@@ -131,6 +138,19 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                         navController.navigate(ROUTE_ADD_SERVER)
                     },
                     onScanQr = { navController.navigate(ROUTE_SCAN_QR) },
+                    onPasteFromPanel = {
+                        val text = clipboard.getText()?.text.orEmpty()
+                        when (val result = QrConfigParser.parse(text)) {
+                            is ImportResult.Profile -> {
+                                addServerViewModel.loadDraft(result.profile, isExisting = false)
+                                navController.navigate(ROUTE_ADD_SERVER)
+                            }
+                            ImportResult.SubscriptionLink ->
+                                Toast.makeText(context, R.string.qr_subscription_link, Toast.LENGTH_LONG).show()
+                            ImportResult.Unrecognized ->
+                                Toast.makeText(context, R.string.clipboard_unrecognized, Toast.LENGTH_LONG).show()
+                        }
+                    },
                 )
             }
 

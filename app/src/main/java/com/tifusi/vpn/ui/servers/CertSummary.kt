@@ -14,7 +14,11 @@ data class CertSummary(
 fun summarizeCertificate(pem: String?, expectCa: Boolean): CertSummary? {
     if (pem.isNullOrBlank()) return null
     return try {
-        val cert = CertificateStore.parseCertificate(pem)
+        val cert = if (expectCa) {
+            CertificateStore.parseCaCertificate(pem)
+        } else {
+            CertificateStore.parseCertificate(pem)
+        }
         val problem = try {
             CertificateStore.validate(cert, expectCa)
             null

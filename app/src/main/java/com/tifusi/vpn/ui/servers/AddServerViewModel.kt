@@ -76,7 +76,7 @@ class AddServerViewModel(application: Application) : AndroidViewModel(applicatio
     fun importServerCa(uri: Uri) = importFile(uri) { bytes ->
         // .crt/.cer files are often DER rather than PEM; normalise to PEM for storage.
         val pem = CertificateStore.certificateBytesToPem(bytes)
-        CertificateStore.validate(CertificateStore.parseCertificate(pem), expectCa = true)
+        CertificateStore.validate(CertificateStore.parseCaCertificate(pem), expectCa = true)
         update { it.copy(serverRootCaCertPem = pem) }
     }
 

@@ -5,97 +5,141 @@ import com.tifusi.vpn.vpn.Ikev2AuthType
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProtocol
 import org.json.JSONObject
-import java.net.URLDecoder
 import java.util.UUID
 
+sealed interface ImportResult {
+    data class Profile(val profile: VpnProfile) : ImportResult
+
+    /** A Tifusi Panel subscription URL: real, but it carries no IKEv2/L2TP settings itself. */
+    object SubscriptionLink : ImportResult
+
+    object Unrecognized : ImportResult
+}
+
 /**
- * Turns a scanned QR payload into a [VpnProfile] draft. Accepted forms:
+ * Turns a scanned QR code or pasted text into a [VpnProfile] draft. Accepted forms:
  *
- * 1. A Tifusi JSON object, raw or base64-encoded (see README for the field list).
- * 2. The same JSON wrapped as `tifusi://import?data=<base64url>`.
- * 3. A standard wg-quick WireGuard config, which is what the official WireGuard QR codes carry.
+ * 1. Tifusi Panel's import QR, shown in each IKEv2/L2TP card on the subscription page. The
+ *    contract is defined panel-side in `backend/app/subscription/info_page.py`:
+ *    `tifusi-vpn://import?data=<base64url, no padding, of JSON>` with
+ *    `{"v":1, "type":"ikev2"|"l2tp", "server", "remote_id"?, "username", "password", "psk"?, "certificate"?}`.
+ * 2. The text the panel's Copy button produces (`Server: …` / `Remote ID: …` / `Username: …` …).
+ * 3. A standard wg-quick WireGuard config, which is what WireGuard QR codes carry.
  *
- * The result is a draft only: it always goes through the edit screen and [com.tifusi.vpn.vpn.VpnProfileValidator]
- * before it is saved, so a scanned certificate is checked exactly like a manually entered one.
+ * The result is a draft only: it always goes through the edit screen and the validator before it
+ * is saved, so an imported certificate is checked exactly like a manually entered one.
  */
 object QrConfigParser {
 
-    private const val URI_PREFIX = "tifusi://import"
+    private const val PANEL_SCHEME = "tifusi-vpn://import"
+    private val SUBSCRIPTION_URL = Regex("""^https?://\S+/sub/[^/\s?#]+/?(?:[?#]\S*)?$""", RegexOption.IGNORE_CASE)
 
-    fun parse(raw: String): VpnProfile? {
+    fun parse(raw: String): ImportResult {
         val text = raw.trim()
-        if (text.startsWith("[Interface]", ignoreCase = true)) {
-            return parseWireGuard(text)
+        if (SUBSCRIPTION_URL.matches(text)) return ImportResult.SubscriptionLink
+
+        val profile = when {
+            text.startsWith(PANEL_SCHEME, ignoreCase = true) -> parsePanelUri(text)
+            text.startsWith("[Interface]", ignoreCase = true) -> parseWireGuard(text)
+            text.startsWith("Server:", ignoreCase = true) -> parsePanelCopyText(text)
+            else -> null
         }
-        val json = decodeJson(text) ?: return null
-        return runCatching { fromJson(json) }.getOrNull()
+        return profile?.let { ImportResult.Profile(it) } ?: ImportResult.Unrecognized
     }
 
-    private fun decodeJson(text: String): JSONObject? {
-        val body = if (text.startsWith(URI_PREFIX)) {
-            URLDecoder.decode(text.substringAfter("data=", ""), "UTF-8")
-        } else {
-            text
-        }
+    private fun parsePanelUri(uri: String): VpnProfile? {
+        val data = uri.substringAfter("data=", "").substringBefore('&').trim()
+        if (data.isEmpty()) return null
 
-        val jsonText = if (body.trimStart().startsWith("{")) {
-            body
-        } else {
-            // Panels differ on standard vs URL-safe base64, so accept both.
-            listOf(Base64.DEFAULT, Base64.URL_SAFE).firstNotNullOfOrNull { flags ->
-                runCatching { String(Base64.decode(body, flags), Charsets.UTF_8) }
-                    .getOrNull()
-                    ?.takeIf { it.trimStart().startsWith("{") }
-            }
-        } ?: return null
+        val json = runCatching {
+            // Android's decoder treats the missing '=' padding as optional.
+            JSONObject(String(Base64.decode(data, Base64.URL_SAFE or Base64.NO_WRAP), Charsets.UTF_8))
+        }.getOrNull() ?: return null
+        // "certificate" was added under v1 as an optional field, so v1 is the only version to expect.
+        if (json.optInt("v", 1) != 1) return null
 
-        return runCatching { JSONObject(jsonText) }.getOrNull()
-    }
-
-    private fun fromJson(json: JSONObject): VpnProfile? {
-        val protocol = when (json.str("protocol")?.uppercase()) {
-            "IKEV2", "IKEV2-IPSEC", "IPSEC" -> VpnProtocol.IKEV2
-            "WIREGUARD", "WG" -> VpnProtocol.WIREGUARD
-            "L2TP", "L2TP-IPSEC" -> VpnProtocol.L2TP
-            "PPTP" -> VpnProtocol.PPTP
-            else -> return null
-        }
         val server = json.str("server") ?: return null
-
-        return VpnProfile(
-            id = UUID.randomUUID().toString(),
-            name = json.str("name") ?: server,
-            protocol = protocol,
-            serverAddress = server,
-            countryName = json.str("country"),
-            countryFlagEmoji = json.str("flag"),
-            ikev2AuthType = parseAuthType(json.str("auth")),
-            remoteIdentifier = json.str("remote_id"),
-            localIdentifier = json.str("local_id"),
-            presharedKey = json.str("psk"),
-            serverRootCaCertPem = json.str("ca_cert"),
-            userCertPem = json.str("client_cert"),
-            userPrivateKeyPem = json.str("client_key"),
-            pkcs12Base64 = json.str("p12"),
-            pkcs12Password = json.str("p12_password"),
-            username = json.str("username"),
-            password = json.str("password"),
-            l2tpIpsecPresharedKey = json.str("l2tp_psk") ?: json.str("ipsec_psk"),
-            wireGuardPrivateKey = json.str("wg_private_key"),
-            wireGuardPeerPublicKey = json.str("wg_peer_public_key"),
-            wireGuardPresharedKey = json.str("wg_preshared_key"),
-            wireGuardAddress = json.str("wg_address"),
-            wireGuardDnsServers = json.str("wg_dns"),
-            wireGuardEndpointPort = json.optInt("wg_port", 0).takeIf { it > 0 },
-            wireGuardAllowedIps = json.str("wg_allowed_ips") ?: "0.0.0.0/0, ::/0",
-        )
+        return when (json.str("type")?.lowercase()) {
+            "ikev2" -> ikev2Profile(
+                server = server,
+                remoteId = json.str("remote_id"),
+                psk = json.str("psk"),
+                username = json.str("username"),
+                password = json.str("password"),
+                caCertificatePem = json.str("certificate"),
+            )
+            "l2tp" -> l2tpProfile(
+                server = server,
+                psk = json.str("psk"),
+                username = json.str("username"),
+                password = json.str("password"),
+            )
+            else -> null
+        }
     }
 
-    private fun parseAuthType(value: String?): Ikev2AuthType = when (value?.lowercase()) {
-        "certificate", "cert", "rsa" -> Ikev2AuthType.CERTIFICATE
-        "username_password", "eap", "mschapv2" -> Ikev2AuthType.USERNAME_PASSWORD
-        else -> Ikev2AuthType.PSK
+    /**
+     * The panel's Copy button text. Its IKEv2 cards always include a `Remote ID:` line (the panel
+     * falls back to the host address) and its L2TP cards never do, which is how the two are told
+     * apart. The admin view writes `PSK: —` when there is no PSK.
+     */
+    private fun parsePanelCopyText(text: String): VpnProfile? {
+        val fields = text.lineSequence()
+            .mapNotNull { line ->
+                val key = line.substringBefore(':', "").trim().lowercase()
+                // Split on the first ':' only: passwords and IPv6 addresses may contain more.
+                val value = line.substringAfter(':', "").trim()
+                if (key.isEmpty() || value.isEmpty() || value == "—") null else key to value
+            }
+            .toMap()
+
+        val server = fields["server"] ?: return null
+        val remoteId = fields["remote id"]
+        return if (remoteId != null) {
+            ikev2Profile(
+                server = server,
+                remoteId = remoteId,
+                psk = fields["psk"],
+                username = fields["username"],
+                password = fields["password"],
+                caCertificatePem = null,
+            )
+        } else {
+            l2tpProfile(server, fields["psk"], fields["username"], fields["password"])
+        }
     }
+
+    private fun ikev2Profile(
+        server: String,
+        remoteId: String?,
+        psk: String?,
+        username: String?,
+        password: String?,
+        caCertificatePem: String?,
+    ) = VpnProfile(
+        id = UUID.randomUUID().toString(),
+        name = remoteId ?: server,
+        protocol = VpnProtocol.IKEV2,
+        serverAddress = server,
+        remoteIdentifier = remoteId,
+        // The panel only hands out a PSK when the Core runs in PSK mode. Otherwise the server
+        // authenticates with its certificate and each user logs in over EAP-MSCHAPv2.
+        ikev2AuthType = if (psk != null) Ikev2AuthType.PSK else Ikev2AuthType.USERNAME_PASSWORD,
+        presharedKey = psk,
+        username = username,
+        password = password,
+        serverRootCaCertPem = caCertificatePem,
+    )
+
+    private fun l2tpProfile(server: String, psk: String?, username: String?, password: String?) = VpnProfile(
+        id = UUID.randomUUID().toString(),
+        name = server,
+        protocol = VpnProtocol.L2TP,
+        serverAddress = server,
+        l2tpIpsecPresharedKey = psk,
+        username = username,
+        password = password,
+    )
 
     private fun parseWireGuard(text: String): VpnProfile? {
         var section = ""

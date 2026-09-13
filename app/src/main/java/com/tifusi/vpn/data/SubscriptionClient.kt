@@ -25,6 +25,43 @@ sealed class SubscriptionError(message: String) : Exception(message) {
     data class Network(val detail: String?) : SubscriptionError("Network: $detail")
 }
 
+/** The account limits the panel reported with the subscription, as of [fetchedAtMs]. */
+data class SubscriptionInfo(
+    val username: String?,
+    val status: String?,
+    /** Unix seconds; null means the account never expires. */
+    val expireEpochSec: Long?,
+    val usedBytes: Long,
+    /** Null means unlimited data. */
+    val limitBytes: Long?,
+    val fetchedAtMs: Long,
+) {
+    fun toJson(): String = JSONObject().apply {
+        put("username", username)
+        put("status", status)
+        put("expire", expireEpochSec)
+        put("used", usedBytes)
+        put("limit", limitBytes)
+        put("fetchedAt", fetchedAtMs)
+    }.toString()
+
+    companion object {
+        fun fromJson(raw: String): SubscriptionInfo? = runCatching {
+            val json = JSONObject(raw)
+            SubscriptionInfo(
+                username = json.optString("username").takeIf { it.isNotBlank() && it != "null" },
+                status = json.optString("status").takeIf { it.isNotBlank() && it != "null" },
+                expireEpochSec = if (json.isNull("expire")) null else json.optLong("expire"),
+                usedBytes = json.optLong("used"),
+                limitBytes = if (json.isNull("limit")) null else json.optLong("limit"),
+                fetchedAtMs = json.optLong("fetchedAt"),
+            )
+        }.getOrNull()
+    }
+}
+
+data class SubscriptionResult(val profiles: List<VpnProfile>, val info: SubscriptionInfo)
+
 /**
  * Imports a Tifusi Panel subscription from either the link (`<panel>/sub/<secret>`) or the short
  * app code shown on the user's subscription page (e.g. `javad7KQ4MP9X`), fetched as
@@ -57,7 +94,7 @@ object SubscriptionClient {
     }
 
     /** Blocking network call; invoke off the main thread. */
-    fun fetchProfiles(context: Context, link: String): List<VpnProfile> {
+    fun fetchProfiles(context: Context, link: String): SubscriptionResult {
         val normalized = normalize(link) ?: throw SubscriptionError.NotASubscriptionLink
         // A stable per-install id, so the panel's device limit counts this phone once even as
         // its mobile IP changes between refreshes.
@@ -81,7 +118,9 @@ object SubscriptionClient {
                 404 -> throw if (body.contains("Not found")) SubscriptionError.NotFound else SubscriptionError.PanelOutdated
                 else -> throw SubscriptionError.Network("HTTP $code")
             }
-            return parse(JSONObject(body)).ifEmpty { throw SubscriptionError.NoServers }
+            val json = JSONObject(body)
+            val profiles = parse(json).ifEmpty { throw SubscriptionError.NoServers }
+            return SubscriptionResult(profiles, parseInfo(json))
         } catch (e: SubscriptionError) {
             throw e
         } catch (e: Exception) {
@@ -142,6 +181,15 @@ object SubscriptionClient {
         certificates.firstOrNull { it.subjectX500Principal == leaf.issuerX500Principal }
             ?.let(CertificateStore::toPem)
     }.getOrNull()
+
+    private fun parseInfo(json: JSONObject) = SubscriptionInfo(
+        username = json.str("username"),
+        status = json.str("status"),
+        expireEpochSec = if (json.isNull("expire") || !json.has("expire")) null else json.optLong("expire"),
+        usedBytes = json.optLong("used_traffic"),
+        limitBytes = if (json.isNull("data_limit") || !json.has("data_limit")) null else json.optLong("data_limit"),
+        fetchedAtMs = System.currentTimeMillis(),
+    )
 
     private fun JSONArray?.objects(): List<JSONObject> =
         if (this == null) emptyList() else (0 until length()).map { getJSONObject(it) }

@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.tifusi.vpn.R
+import com.tifusi.vpn.data.SubscriptionClient
+import com.tifusi.vpn.data.SubscriptionInfo
 import com.tifusi.vpn.ui.components.LegacyHandoffCard
 import com.tifusi.vpn.ui.components.PowerButton
 import com.tifusi.vpn.ui.components.ProtocolGrid
@@ -25,6 +27,7 @@ import com.tifusi.vpn.ui.theme.TifusiTextSecondary
 import com.tifusi.vpn.vpn.VpnConnectionState
 import com.tifusi.vpn.vpn.VpnProtocol
 import java.util.Locale
+import kotlin.math.ceil
 
 @Composable
 fun HomeScreen(
@@ -57,9 +60,18 @@ fun HomeScreen(
             serverName = state.selectedProfile?.countryName ?: state.selectedProfile?.name,
             serverLocation = state.selectedProfile?.serverAddress,
             flagEmoji = state.selectedProfile?.countryFlagEmoji,
-            downloadLabel = formatBytes(state.trafficStats?.rxBytes),
-            uploadLabel = formatBytes(state.trafficStats?.txBytes),
-            speedLabel = "—",
+            downloadLabel = if (isConnected) formatSpeed(state.downloadBytesPerSec) else "—",
+            uploadLabel = if (isConnected) formatSpeed(state.uploadBytesPerSec) else "—",
+            speedLabel = when {
+                !isConnected -> "—"
+                !state.internetChecked -> "…"
+                state.internetLatencyMs != null -> stringResource(R.string.internet_ok, state.internetLatencyMs.toInt())
+                else -> stringResource(R.string.internet_fail)
+            },
+            // Only for servers that came from the subscription the numbers describe.
+            quotaLabel = state.subscriptionInfo
+                ?.takeIf { state.selectedProfile?.id?.startsWith(SubscriptionClient.ID_PREFIX) == true }
+                ?.let { quotaLabel(it) },
             isConnected = isConnected,
             onServerClick = onServerClick,
         )
@@ -130,6 +142,27 @@ private fun ErrorBlock(messages: List<String>, onDismiss: () -> Unit) {
             Text(stringResource(R.string.action_dismiss))
         }
     }
+}
+
+@Composable
+private fun quotaLabel(info: SubscriptionInfo): String {
+    val secondsLeft = info.expireEpochSec?.let { it - System.currentTimeMillis() / 1000 }
+    val days = when {
+        secondsLeft == null -> stringResource(R.string.quota_no_expiry)
+        secondsLeft <= 0 -> stringResource(R.string.quota_expired)
+        else -> stringResource(R.string.quota_days_left, ceil(secondsLeft / 86_400.0).toInt())
+    }
+    val data = info.limitBytes?.let { limit ->
+        stringResource(R.string.quota_data_left, formatBytes((limit - info.usedBytes).coerceAtLeast(0)))
+    } ?: stringResource(R.string.quota_unlimited)
+    return "⏳ $days   ·   📦 $data"
+}
+
+/** Bits per second, the way connection speeds are usually quoted. */
+private fun formatSpeed(bytesPerSec: Long?): String {
+    if (bytesPerSec == null) return "—"
+    val kbps = bytesPerSec * 8 / 1000.0
+    return if (kbps >= 1000) String.format(Locale.US, "%.1f Mbps", kbps / 1000) else String.format(Locale.US, "%.0f kbps", kbps)
 }
 
 private fun formatDuration(totalSeconds: Long): String {

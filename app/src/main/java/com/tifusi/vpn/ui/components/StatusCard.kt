@@ -44,6 +44,8 @@ fun StatusCard(
     downloadLabel: String,
     uploadLabel: String,
     speedLabel: String,
+    /** Days and data left on the subscription; null hides the row. */
+    quotaLabel: String?,
     isConnected: Boolean,
     onServerClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -119,6 +121,14 @@ fun StatusCard(
             TrafficStat(Icons.Default.ArrowDownward, downloadLabel)
             TrafficStat(Icons.Default.ArrowUpward, uploadLabel)
             TrafficStat(Icons.Default.Speed, speedLabel)
+        }
+
+        quotaLabel?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = TifusiTextSecondary,
+            )
         }
     }
 }

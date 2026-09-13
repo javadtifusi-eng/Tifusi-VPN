@@ -103,6 +103,13 @@
     <string name="error_timeout">Connection timed out after 45 seconds. Check the server address and that UDP ports 500 and 4500 are open.</string>
     <string name="error_unknown">Connection failed: %1$s</string>
     <string name="error_platform">Android reported: %1$s</string>
+    <string name="quota_days_left">%1$d days left</string>
+    <string name="quota_no_expiry">No expiry</string>
+    <string name="quota_expired">Expired</string>
+    <string name="quota_data_left">%1$s left</string>
+    <string name="quota_unlimited">Unlimited data</string>
+    <string name="internet_ok">✓ %1$d ms</string>
+    <string name="internet_fail">✗ No internet</string>
     <string name="error_deactivated">Android turned the VPN off. This usually means another VPN app was switched on; turn that app off and connect again.</string>
     <string name="action_dismiss">Dismiss</string>
 

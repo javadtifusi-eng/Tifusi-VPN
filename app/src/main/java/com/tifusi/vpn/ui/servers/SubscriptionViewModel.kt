@@ -56,11 +56,11 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {
             val message = try {
-                val profiles = withContext(Dispatchers.IO) {
+                val result = withContext(Dispatchers.IO) {
                     SubscriptionClient.fetchProfiles(getApplication(), link)
                 }
-                repository.replaceSubscriptionProfiles(link.trim(), profiles)
-                SubscriptionMessage.Imported(profiles.size)
+                repository.replaceSubscriptionProfiles(link.trim(), result)
+                SubscriptionMessage.Imported(result.profiles.size)
             } catch (e: SubscriptionError) {
                 SubscriptionMessage.Failed(e)
             }

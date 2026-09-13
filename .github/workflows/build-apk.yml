@@ -42,3 +42,30 @@ jobs:
           tag_name: v${{ github.run_number }}
           name: Tifusi VPN v${{ github.run_number }}
           files: tifusi-vpn.apk
+
+  # The Windows app ships in the same release as the APK (same v<run number> tag and version
+  # number), after the Android job has created that release.
+  windows:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build Windows app
+        run: dotnet publish windows/TifusiVPN/TifusiVPN.csproj -c Release -p:TifusiBuildNumber=${{ github.run_number }} -o publish
+
+      # Constant name, so releases/latest/download/TifusiVPN.exe always points at the newest build.
+      - name: Name the exe
+        shell: pwsh
+        run: Move-Item publish/TifusiVPN.exe TifusiVPN.exe
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Tifusi VPN v${{ github.run_number }}
+          files: TifusiVPN.exe

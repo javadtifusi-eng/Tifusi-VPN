@@ -2,6 +2,7 @@ package com.tifusi.vpn.data
 
 import android.content.Context
 import android.provider.Settings
+import com.tifusi.vpn.vpn.CertificateStore
 import com.tifusi.vpn.vpn.Ikev2AuthType
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProtocol
@@ -95,7 +96,7 @@ object SubscriptionClient {
                 presharedKey = psk,
                 username = cfg.str("username"),
                 password = cfg.str("password"),
-                serverRootCaCertPem = cfg.str("certificate")?.takeIf(::hasSelfSignedRoot),
+                serverRootCaCertPem = cfg.str("certificate")?.let(::leafIssuerPem),
             )
         }
         val l2tp = json.optJSONArray("l2tp").objects().map { cfg ->
@@ -114,16 +115,23 @@ object SubscriptionClient {
     }
 
     /**
-     * Only a self-signed chain needs pinning. A publicly issued chain (e.g. Let's Encrypt, whose
-     * top certificate is cross-signed rather than self-signed) is left to the system trust store,
-     * matching what the panel's info page puts in its QR codes.
+     * The certificate that issued the server's own certificate, pinned as the trust anchor.
+     * strongSwan sends only its end-entity certificate, and Android's IKE stack neither fetches
+     * nor ships intermediates, so a publicly issued leaf (Let's Encrypt's YR1 chains to Root YR,
+     * which older stores lack) never validates against the system roots: iOS completes the chain
+     * itself, Android silently fails IKE_AUTH. For the panel's self-signed bundle the issuer is
+     * its CA. If the server renews onto another intermediate, refreshing the subscription
+     * picks it up.
      */
-    private fun hasSelfSignedRoot(pem: String): Boolean = runCatching {
-        CertificateFactory.getInstance("X.509")
+    private fun leafIssuerPem(pem: String): String? = runCatching {
+        val certificates = CertificateFactory.getInstance("X.509")
             .generateCertificates(ByteArrayInputStream(pem.toByteArray()))
             .filterIsInstance<X509Certificate>()
-            .any { it.subjectX500Principal == it.issuerX500Principal }
-    }.getOrDefault(false)
+        // basicConstraints < 0 marks a non-CA certificate, i.e. the server's own.
+        val leaf = certificates.firstOrNull { it.basicConstraints < 0 } ?: certificates.first()
+        certificates.firstOrNull { it.subjectX500Principal == leaf.issuerX500Principal }
+            ?.let(CertificateStore::toPem)
+    }.getOrNull()
 
     private fun JSONArray?.objects(): List<JSONObject> =
         if (this == null) emptyList() else (0 until length()).map { getJSONObject(it) }

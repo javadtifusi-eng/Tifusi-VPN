@@ -37,9 +37,17 @@ class Ikev2VpnManager(private val context: Context) {
         return vpnManager.provisionVpnProfile(ikeProfile)
     }
 
-    fun connect() {
-        vpnManager.startProvisionedVpnProfile()
-    }
+    /**
+     * Starts the provisioned profile. On Android 13+ returns the session key the platform stamps
+     * on every event about this run, so events left over from an earlier run can be told apart.
+     */
+    fun connect(): String? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            vpnManager.startProvisionedVpnProfileSession()
+        } else {
+            vpnManager.startProvisionedVpnProfile()
+            null
+        }
 
     fun disconnect() {
         vpnManager.stopProvisionedVpnProfile()

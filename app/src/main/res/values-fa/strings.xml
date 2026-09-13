@@ -103,6 +103,7 @@
     <string name="error_timeout">اتصال بعد از ۴۵ ثانیه برقرار نشد. آدرس سرور و باز بودن پورت‌های UDP 500 و 4500 را بررسی کنید.</string>
     <string name="error_unknown">اتصال ناموفق بود: %1$s</string>
     <string name="error_platform">گزارش اندروید: %1$s</string>
+    <string name="error_deactivated">اندروید VPN را خاموش کرد. معمولاً یعنی یک اپ VPN دیگر روشن شده؛ آن را خاموش کنید و دوباره وصل شوید.</string>
     <string name="action_dismiss">بستن</string>
 
     <!-- Servers -->

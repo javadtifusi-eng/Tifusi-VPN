@@ -33,6 +33,7 @@ class VpnController(private val context: Context) {
     private var lastPlatformEvent: PlatformVpnEvent? = null
     private var connectionCallback: ConnectivityManager.NetworkCallback? = null
     private var trafficBaseline: LongArray? = null
+    private var ikev2SessionKey: String? = null
 
     init {
         // On Android 11-12 there is no profile-state API, so the appearance of a VPN network is
@@ -122,6 +123,16 @@ class VpnController(private val context: Context) {
         if (activeProtocol != VpnProtocol.IKEV2) return
         val current = _state.value
         if (current !is VpnConnectionState.Connecting && current !is VpnConnectionState.Connected) return
+        // Starting a new run stops the previous one, and the platform reports that stop as
+        // DEACTIVATED_BY_USER. Acting on it used to tear down the brand-new tunnel the moment it
+        // came up, so only events for the current run count.
+        if (event.sessionKey != null && event.sessionKey != ikev2SessionKey) return
+        if (event.category == VpnManager.CATEGORY_EVENT_DEACTIVATED_BY_USER) {
+            // The platform already stopped the VPN (Settings, or another VPN app took over);
+            // stopping it again is pointless, only the state and a plain message are left.
+            fail(VpnFailure.Deactivated)
+            return
+        }
         if (event.isRecoverable) {
             // The platform retries these itself; keep the reason so the timeout can show it.
             lastPlatformEvent = event
@@ -155,10 +166,13 @@ class VpnController(private val context: Context) {
 
         return try {
             activeProtocol = VpnProtocol.IKEV2
+            // Until the platform hands out the new run's key, ignore every keyed event: they can
+            // only be about the run being replaced.
+            ikev2SessionKey = PENDING_SESSION
             markConnecting()
             // Only starts negotiation; success is confirmed later by refresh() or the network
             // callback, never assumed here.
-            manager.connect()
+            ikev2SessionKey = manager.connect()
             null
         } catch (e: Exception) {
             fail(VpnFailure.Unknown(e.message))
@@ -256,6 +270,9 @@ class VpnController(private val context: Context) {
         // Longer than the IKE library's ~31 s of retransmits, so its PROTOCOL_TIMEOUT event
         // arrives while still Connecting and is shown instead of the generic timeout.
         private const val CONNECT_TIMEOUT_MS = 45_000L
+
+        // Never a real key: the platform's keys are UUIDs.
+        private const val PENDING_SESSION = ""
     }
 }
 
@@ -277,6 +294,9 @@ sealed interface VpnFailure {
     object Timeout : VpnFailure
 
     data class Platform(val event: PlatformVpnEvent) : VpnFailure
+
+    /** Android itself turned the VPN off: from Settings, or because another VPN app started. */
+    object Deactivated : VpnFailure
 
     data class Unknown(val detail: String?) : VpnFailure
 }

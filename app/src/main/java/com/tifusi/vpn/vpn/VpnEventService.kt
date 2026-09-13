@@ -18,6 +18,8 @@ data class PlatformVpnEvent(
     val errorCode: Int,
     /** Null when the platform sent no underlying link info. */
     val underlyingHasIpv4: Boolean?,
+    /** Which run of the profile this is about; see Ikev2VpnManager.connect. */
+    val sessionKey: String? = null,
 ) {
     val isRecoverable: Boolean get() = errorClass == VpnManager.ERROR_CLASS_RECOVERABLE
 
@@ -90,6 +92,7 @@ class VpnEventService : Service() {
             errorClass = intent.getIntExtra(VpnManager.EXTRA_ERROR_CLASS, -1),
             errorCode = intent.getIntExtra(VpnManager.EXTRA_ERROR_CODE, -1),
             underlyingHasIpv4 = link?.linkAddresses?.any { it.address is Inet4Address },
+            sessionKey = intent.getStringExtra(VpnManager.EXTRA_SESSION_KEY),
         )
     }
 }

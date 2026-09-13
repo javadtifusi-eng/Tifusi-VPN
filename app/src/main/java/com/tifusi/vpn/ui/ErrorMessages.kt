@@ -29,6 +29,7 @@ fun VpnFailure.localized(context: Context): String = when (this) {
     VpnFailure.NegotiationFailed -> context.getString(R.string.error_negotiation_failed)
     VpnFailure.Timeout -> context.getString(R.string.error_timeout)
     is VpnFailure.Platform -> context.getString(R.string.error_platform, event.describe())
+    VpnFailure.Deactivated -> context.getString(R.string.error_deactivated)
     is VpnFailure.Unknown -> context.getString(R.string.error_unknown, detail ?: "-")
 }
 

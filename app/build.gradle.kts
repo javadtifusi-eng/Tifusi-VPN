@@ -54,6 +54,10 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
+            // Published builds are release builds signed with the same fixed key as debug, so they
+            // install over earlier debug releases. Play Protect scans debuggable APKs from outside
+            // the store much longer, which stalled in-app updates.
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
         }
     }

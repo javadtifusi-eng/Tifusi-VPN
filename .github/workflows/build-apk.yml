@@ -28,13 +28,13 @@ jobs:
 
       # The run number becomes versionCode/versionName and the release tag below, so the
       # About tab can tell whether a newer build exists.
-      - name: Build debug APK
-        run: gradle assembleDebug -Ptifusi.buildNumber=${{ github.run_number }}
+      - name: Build release APK
+        run: gradle assembleRelease -Ptifusi.buildNumber=${{ github.run_number }}
 
       # The asset name has to stay constant, otherwise the
       # releases/latest/download/tifusi-vpn.apk link breaks on every build.
       - name: Name the APK
-        run: mv app/build/outputs/apk/debug/*.apk tifusi-vpn.apk
+        run: mv app/build/outputs/apk/release/*.apk tifusi-vpn.apk
 
       - name: Publish release
         uses: softprops/action-gh-release@v2

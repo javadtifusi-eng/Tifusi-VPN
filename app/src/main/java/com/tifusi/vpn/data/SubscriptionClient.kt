@@ -25,9 +25,6 @@ sealed class SubscriptionError(message: String) : Exception(message) {
     data class Network(val detail: String?) : SubscriptionError("Network: $detail")
 }
 
-/** A subscription's servers plus the panel's support Telegram, when the panel sets one. */
-data class Subscription(val profiles: List<VpnProfile>, val supportTelegram: String?)
-
 /**
  * Imports a Tifusi Panel subscription from either the link (`<panel>/sub/<secret>`) or the short
  * app code shown on the user's subscription page (e.g. `javad7KQ4MP9X`), fetched as
@@ -60,7 +57,7 @@ object SubscriptionClient {
     }
 
     /** Blocking network call; invoke off the main thread. */
-    fun fetchProfiles(context: Context, link: String): Subscription {
+    fun fetchProfiles(context: Context, link: String): List<VpnProfile> {
         val normalized = normalize(link) ?: throw SubscriptionError.NotASubscriptionLink
         // A stable per-install id, so the panel's device limit counts this phone once even as
         // its mobile IP changes between refreshes.
@@ -84,9 +81,7 @@ object SubscriptionClient {
                 404 -> throw if (body.contains("Not found")) SubscriptionError.NotFound else SubscriptionError.PanelOutdated
                 else -> throw SubscriptionError.Network("HTTP $code")
             }
-            val json = JSONObject(body)
-            val profiles = parse(json).ifEmpty { throw SubscriptionError.NoServers }
-            return Subscription(profiles, json.str("support_telegram"))
+            return parse(JSONObject(body)).ifEmpty { throw SubscriptionError.NoServers }
         } catch (e: SubscriptionError) {
             throw e
         } catch (e: Exception) {

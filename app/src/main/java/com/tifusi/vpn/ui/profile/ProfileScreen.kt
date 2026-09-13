@@ -18,7 +18,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import com.tifusi.vpn.BuildConfig
 import com.tifusi.vpn.R
-import com.tifusi.vpn.data.VpnProfileRepository
 import com.tifusi.vpn.ui.theme.TifusiNeonBlue
 
 private val LanguageOptions = listOf(
@@ -42,9 +40,7 @@ private val LanguageOptions = listOf(
 @Composable
 fun ProfileScreen() {
     val context = LocalContext.current
-    val repository = remember { VpnProfileRepository(context) }
-    val panelTelegram by repository.supportTelegram.collectAsState(initial = null)
-    val telegram = telegramUsername(panelTelegram) ?: telegramUsername(BuildConfig.SUPPORT_TELEGRAM)
+    val telegram = telegramUsername(BuildConfig.SUPPORT_TELEGRAM)
     var selectedTag by remember {
         mutableStateOf(AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore('-'))
     }
@@ -82,8 +78,7 @@ fun ProfileScreen() {
             }
         }
 
-        // The imported panel's own support comes first, so a public build of the app sends each
-        // panel's users to that panel's owner; the build's default covers users with no panel yet.
+        // Set per build in gradle.properties (tifusi.supportTelegram); hidden when empty.
         telegram?.let { username ->
             Text(
                 stringResource(R.string.contact_us),

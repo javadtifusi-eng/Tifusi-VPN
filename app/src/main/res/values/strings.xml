@@ -25,7 +25,7 @@
     <string name="nav_home">Home</string>
     <string name="nav_servers">Servers</string>
     <string name="nav_profile">Profile</string>
-    <string name="nav_services">Services</string>
+    <string name="nav_services">About</string>
 
     <!-- Add server -->
     <string name="add_server">Add Server</string>
@@ -127,6 +127,12 @@
     <string name="language_fa">فارسی</string>
     <string name="language_en">English</string>
     <string name="app_version">Version %1$s</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_up_to_date">You have the latest version</string>
+    <string name="update_available">Version %1$s is available</string>
+    <string name="update_download">Download update</string>
+    <string name="update_failed">Could not check for updates</string>
     <string name="android_version_note_ok">This device supports automatic IKEv2 connect</string>
 
     <!-- Add/edit form -->

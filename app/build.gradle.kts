@@ -11,11 +11,15 @@ android {
         applicationId = "com.tifusi.vpn"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI passes its run number, which is also the release tag (v<number>), so the About tab
+        // can compare this build against the latest release.
+        val buildNumber = providers.gradleProperty("tifusi.buildNumber").getOrElse("1").toInt()
+        versionCode = buildNumber
+        versionName = buildNumber.toString()
 
         buildConfigField("String", "DEFAULT_PANEL_URL", "\"${providers.gradleProperty("tifusi.panelUrl").getOrElse("")}\"")
         buildConfigField("String", "SUPPORT_TELEGRAM", "\"${providers.gradleProperty("tifusi.supportTelegram").getOrElse("")}\"")
+        buildConfigField("String", "UPDATE_REPO", "\"${providers.gradleProperty("tifusi.updateRepo").getOrElse("")}\"")
 
         // Phones only: dropping the emulator (x86) native libraries of WireGuard and ML Kit
         // roughly halves the APK. armeabi-v7a keeps older 32-bit Samsung models working.
@@ -33,7 +37,22 @@ android {
         kotlinCompilerExtensionVersion = "1.5.14"
     }
 
+    // A fixed debug key kept in the repo, so every CI build carries the same signature and installs
+    // over the previous one. It protects nothing secret; it only keeps in-app updates working.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("tifusi-debug.p12")
+            storeType = "pkcs12"
+            storePassword = "tifusi-debug"
+            keyAlias = "tifusi"
+            keyPassword = "tifusi-debug"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
         }

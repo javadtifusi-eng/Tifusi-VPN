@@ -26,8 +26,10 @@ jobs:
         with:
           gradle-version: "8.7"
 
+      # The run number becomes versionCode/versionName and the release tag below, so the
+      # About tab can tell whether a newer build exists.
       - name: Build debug APK
-        run: gradle assembleDebug
+        run: gradle assembleDebug -Ptifusi.buildNumber=${{ github.run_number }}
 
       # The asset name has to stay constant, otherwise the
       # releases/latest/download/tifusi-vpn.apk link breaks on every build.

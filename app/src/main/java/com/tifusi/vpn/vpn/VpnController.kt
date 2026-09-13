@@ -32,6 +32,7 @@ class VpnController(private val context: Context) {
     private var connectingSinceElapsedMs: Long? = null
     private var lastPlatformEvent: PlatformVpnEvent? = null
     private var connectionCallback: ConnectivityManager.NetworkCallback? = null
+    private var trafficBaseline: LongArray? = null
 
     init {
         // On Android 11-12 there is no profile-state API, so the appearance of a VPN network is
@@ -190,6 +191,7 @@ class VpnController(private val context: Context) {
     private fun markConnected() {
         connectingSinceElapsedMs = null
         connectedSinceElapsedMs = SystemClock.elapsedRealtime()
+        trafficBaseline = deviceTrafficCounters()
         _state.value = VpnConnectionState.Connected
     }
 
@@ -197,6 +199,7 @@ class VpnController(private val context: Context) {
         activeProtocol = null
         connectingSinceElapsedMs = null
         connectedSinceElapsedMs = null
+        trafficBaseline = null
         _state.value = VpnConnectionState.Disconnected
     }
 
@@ -220,10 +223,33 @@ class VpnController(private val context: Context) {
     }
 
     fun trafficStats(profile: VpnProfile): TrafficStats? = when (profile.protocol) {
-        // Only the WireGuard backend exposes per-tunnel counters; the platform IKEv2 profile
-        // does not surface them to the owning app.
         VpnProtocol.WIREGUARD -> runCatching { wireGuardManager.statistics() }.getOrNull()
+        VpnProtocol.IKEV2 -> ikev2TrafficEstimate()
         else -> null
+    }
+
+    /** Device-wide rx, tx, mobile rx, mobile tx; android.net.TrafficStats reports -1 if unsupported. */
+    private fun deviceTrafficCounters() = longArrayOf(
+        android.net.TrafficStats.getTotalRxBytes(),
+        android.net.TrafficStats.getTotalTxBytes(),
+        android.net.TrafficStats.getMobileRxBytes(),
+        android.net.TrafficStats.getMobileTxBytes(),
+    )
+
+    /**
+     * The platform IKEv2 profile exposes no per-tunnel counters to its owning app, so this estimates
+     * them from device totals since the tunnel came up. Totals see tunnel traffic twice, once on the
+     * tunnel interface and once encrypted on the underlying network: on mobile data that underlying
+     * share is the mobile counter, and on Wi-Fi, where the mobile counter does not grow, it is about
+     * half of the total.
+     */
+    private fun ikev2TrafficEstimate(): TrafficStats? {
+        val base = trafficBaseline ?: return null
+        val now = deviceTrafficCounters()
+        if (base[0] < 0 || now[0] < 0) return null
+        fun delta(i: Int) = if (base[i] < 0 || now[i] < 0) 0L else (now[i] - base[i]).coerceAtLeast(0)
+        fun tunnel(total: Long, mobile: Long) = if (mobile > 0) (total - mobile).coerceAtLeast(0) else total / 2
+        return TrafficStats(rxBytes = tunnel(delta(0), delta(2)), txBytes = tunnel(delta(1), delta(3)))
     }
 
     companion object {

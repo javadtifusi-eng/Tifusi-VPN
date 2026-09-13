@@ -36,6 +36,7 @@ import com.tifusi.vpn.ui.home.HomeViewModel
 import com.tifusi.vpn.ui.profile.ProfileScreen
 import com.tifusi.vpn.ui.servers.AddServerScreen
 import com.tifusi.vpn.ui.servers.AddServerViewModel
+import com.tifusi.vpn.ui.servers.ScanQrScreen
 import com.tifusi.vpn.ui.servers.ServersScreen
 import com.tifusi.vpn.ui.servers.SubscriptionViewModel
 import com.tifusi.vpn.ui.services.ServicesScreen
@@ -56,6 +57,7 @@ private enum class TifusiDestination(
 }
 
 private const val ROUTE_ADD_SERVER = "add_server"
+private const val ROUTE_SCAN_QR = "scan_qr"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -135,6 +137,19 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                     onSubscriptionLinkChange = subscriptionViewModel::onLinkChange,
                     onImportSubscription = subscriptionViewModel::importLink,
                     onRefreshSubscription = subscriptionViewModel::refresh,
+                    onScanQr = { navController.navigate(ROUTE_SCAN_QR) },
+                )
+            }
+
+            composable(ROUTE_SCAN_QR) {
+                ScanQrScreen(
+                    onSubscriptionScanned = { link ->
+                        // Same path as typing the link and tapping "Get servers".
+                        subscriptionViewModel.onLinkChange(link)
+                        subscriptionViewModel.importLink()
+                        navController.popBackStack()
+                    },
+                    onCancel = { navController.popBackStack() },
                 )
             }
 

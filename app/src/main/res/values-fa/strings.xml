@@ -118,6 +118,10 @@
 
     <!-- QR -->
     <string name="grant_permission">اجازه دادن</string>
+    <string name="scan_qr_code">اسکن بارکد</string>
+    <string name="camera_permission_required">برای اسکن بارکد، اجازه‌ی دوربین لازم است.</string>
+    <string name="qr_point_camera">دوربین را روی یکی از بارکدهای صفحه‌ی اشتراک بگیرید. سرورها، گواهی و اطلاعات اکانت همه از پنل می‌آیند.</string>
+    <string name="qr_unrecognized">این بارکد مربوط به اشتراک Tifusi نیست. یکی از بارکدهای صفحه‌ی اشتراک را اسکن کنید.</string>
     <string name="subscription_title">شناسه یا لینک اشتراک</string>
     <string name="subscription_hint">مثلاً javad7KQ4MP9X</string>
     <string name="subscription_paste">چسباندن</string>

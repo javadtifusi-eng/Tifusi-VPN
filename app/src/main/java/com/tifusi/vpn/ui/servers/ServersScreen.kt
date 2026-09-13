@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -64,6 +65,7 @@ fun ServersScreen(
     onSubscriptionLinkChange: (String) -> Unit,
     onImportSubscription: () -> Unit,
     onRefreshSubscription: () -> Unit,
+    onScanQr: () -> Unit,
 ) {
     var pendingDelete by remember { mutableStateOf<VpnProfile?>(null) }
 
@@ -78,6 +80,7 @@ fun ServersScreen(
             onLinkChange = onSubscriptionLinkChange,
             onImport = onImportSubscription,
             onRefresh = onRefreshSubscription,
+            onScanQr = onScanQr,
         )
 
         if (profiles.isEmpty()) {
@@ -141,6 +144,7 @@ private fun SubscriptionCard(
     onLinkChange: (String) -> Unit,
     onImport: () -> Unit,
     onRefresh: () -> Unit,
+    onScanQr: () -> Unit,
 ) {
     val clipboard = LocalClipboardManager.current
 
@@ -163,9 +167,14 @@ private fun SubscriptionCard(
             placeholder = { Text(stringResource(R.string.subscription_hint)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             trailingIcon = {
-                // Long-press copy/paste is unreliable on some phones, so paste is one tap here.
-                IconButton(onClick = { clipboard.getText()?.text?.let { onLinkChange(it.trim()) } }) {
-                    Icon(Icons.Default.ContentPaste, contentDescription = stringResource(R.string.subscription_paste))
+                Row {
+                    IconButton(onClick = onScanQr) {
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.scan_qr_code))
+                    }
+                    // Long-press copy/paste is unreliable on some phones, so paste is one tap here.
+                    IconButton(onClick = { clipboard.getText()?.text?.let { onLinkChange(it.trim()) } }) {
+                        Icon(Icons.Default.ContentPaste, contentDescription = stringResource(R.string.subscription_paste))
+                    }
                 }
             },
         )

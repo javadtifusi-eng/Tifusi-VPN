@@ -91,6 +91,13 @@ dependencies {
     // WireGuard official Android backend (VpnService based tunnel)
     implementation("com.wireguard.android:tunnel:1.0.20230706")
 
+    // QR scanning of the panel's subscription codes. The bundled ML Kit model needs no Google Play
+    // services download, which is unreliable from Iran.
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.06.00"))

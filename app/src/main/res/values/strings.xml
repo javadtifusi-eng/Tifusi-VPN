@@ -118,6 +118,10 @@
 
     <!-- QR -->
     <string name="grant_permission">Grant Permission</string>
+    <string name="scan_qr_code">Scan QR code</string>
+    <string name="camera_permission_required">Camera access is needed to scan the QR code.</string>
+    <string name="qr_point_camera">Point the camera at a QR code on your subscription page. Servers, certificate and account details are all fetched from the panel.</string>
+    <string name="qr_unrecognized">This QR code is not a Tifusi subscription. Scan a QR code from the subscription page.</string>
     <string name="subscription_title">Subscription code or link</string>
     <string name="subscription_hint">e.g. javad7KQ4MP9X</string>
     <string name="subscription_paste">Paste</string>

@@ -2,6 +2,8 @@ package com.tifusi.vpn.vpn
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.VpnManager
 import android.net.VpnService
 import android.os.SystemClock
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,11 +31,12 @@ class VpnController(private val context: Context) {
     private var connectedSinceElapsedMs: Long? = null
     private var connectingSinceElapsedMs: Long? = null
     private var lastPlatformEvent: PlatformVpnEvent? = null
+    private var connectionCallback: ConnectivityManager.NetworkCallback? = null
 
     init {
         // On Android 11-12 there is no profile-state API, so the appearance of a VPN network is
         // the only signal that the IKEv2 tunnel actually came up.
-        ikev2Manager?.observeConnectionState { connected ->
+        connectionCallback = ikev2Manager?.observeConnectionState { connected ->
             if (activeProtocol != VpnProtocol.IKEV2) return@observeConnectionState
             if (connected && _state.value is VpnConnectionState.Connecting) {
                 markConnected()
@@ -113,6 +116,8 @@ class VpnController(private val context: Context) {
 
     /** The platform's own report on the IKEv2 profile (Android 13+), via [VpnEventService]. */
     fun onPlatformEvent(event: PlatformVpnEvent) {
+        // A settings change, not a failure: it must not tear down a working tunnel.
+        if (event.category == VpnManager.CATEGORY_EVENT_ALWAYS_ON_STATE_CHANGED) return
         if (activeProtocol != VpnProtocol.IKEV2) return
         val current = _state.value
         if (current !is VpnConnectionState.Connecting && current !is VpnConnectionState.Connected) return
@@ -202,6 +207,12 @@ class VpnController(private val context: Context) {
         _state.value = VpnConnectionState.Failed(failure)
     }
 
+    /** Must be called when the owner goes away, or each controller leaks a network callback. */
+    fun close() {
+        connectionCallback?.let { ikev2Manager?.stopObserving(it) }
+        connectionCallback = null
+    }
+
     /** Seconds the current tunnel has been up, for the duration readout on the home screen. */
     fun connectedDurationSeconds(): Long {
         val since = connectedSinceElapsedMs ?: return 0
@@ -216,7 +227,9 @@ class VpnController(private val context: Context) {
     }
 
     companion object {
-        private const val CONNECT_TIMEOUT_MS = 30_000L
+        // Longer than the IKE library's ~31 s of retransmits, so its PROTOCOL_TIMEOUT event
+        // arrives while still Connecting and is shown instead of the generic timeout.
+        private const val CONNECT_TIMEOUT_MS = 45_000L
     }
 }
 

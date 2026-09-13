@@ -78,6 +78,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    override fun onCleared() {
+        controller.close()
+    }
+
     fun selectProtocol(protocol: VpnProtocol) {
         _uiState.update { it.copy(selectedProtocol = protocol) }
         // Switch to the first saved profile that speaks the newly chosen protocol, if any.

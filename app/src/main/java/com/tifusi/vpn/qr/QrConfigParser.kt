@@ -122,15 +122,10 @@ object QrConfigParser {
         protocol = VpnProtocol.IKEV2,
         serverAddress = server,
         remoteIdentifier = remoteId,
-        // The panel prints the Core's PSK on the IKEv2 card even when the Core runs in EAP mode,
-        // and the payload carries no auth-mode field, so the PSK alone does not mean PSK auth.
-        // Credentials are the reliable signal: EAP-MSCHAPv2 is the panel's default, and it is the
-        // only mode Android's Ikev2VpnProfile can drive when the server also demands a user login.
-        ikev2AuthType = if (username != null && password != null) {
-            Ikev2AuthType.USERNAME_PASSWORD
-        } else {
-            Ikev2AuthType.PSK
-        },
+        // The panel only includes psk when the Core runs in PSK mode (links/generator.py), while
+        // every payload carries a username and password. Otherwise the server authenticates with
+        // its certificate and each user logs in over EAP-MSCHAPv2.
+        ikev2AuthType = if (psk != null) Ikev2AuthType.PSK else Ikev2AuthType.USERNAME_PASSWORD,
         presharedKey = psk,
         username = username,
         password = password,

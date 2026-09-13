@@ -90,6 +90,10 @@ class Ikev2VpnManager(private val context: Context) {
             }
         }
 
+        // The platform default (1360) makes ESP-in-UDP packets that some mobile networks drop,
+        // stalling traffic after the tunnel is up. 1280 is the lowest value the platform allows.
+        builder.setMaxMtu(MIN_MTU)
+
         return builder.build()
     }
 
@@ -178,6 +182,7 @@ class Ikev2VpnManager(private val context: Context) {
 
     companion object {
         private const val DEFAULT_PSK_IDENTITY = "tifusi-vpn"
+        private const val MIN_MTU = 1280
 
         fun isSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
     }

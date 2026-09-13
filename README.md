@@ -52,7 +52,7 @@ tifusi-vpn://import?data=<base64url بدون padding از JSON زیر>
 {"v":1, "type":"ikev2"|"l2tp", "server":"…", "remote_id":"…"?, "username":"…", "password":"…", "psk":"…"?, "certificate":"<PEM CA>"?}
 ```
 
-- `psk` هر وقت روی Core مقداری داشته باشد فرستاده می‌شود، حتی در حالت eap. چون payload فیلد حالت احراز هویت ندارد، اپ به وجود `username` و `password` نگاه می‌کند: اگر باشند EAP-MSCHAPv2 و در غیر این صورت PSK.
+- `psk` فقط در حالت psk فرستاده می‌شود؛ اپ از وجودش حالت احراز هویت را تشخیص می‌دهد.
 - `certificate` فقط وقتی فرستاده می‌شود که CA self-signed باشد.
 - اگر این فرمت در پنل تغییر کند، `app/src/main/java/com/tifusi/vpn/qr/QrConfigParser.kt` هم باید تغییر کند.
 

@@ -101,7 +101,7 @@
 
     <!-- Connection failures -->
     <string name="error_negotiation_failed">سرور اتصال را رد کرد. شناسه سرور (Remote ID)، گواهی CA سرور و اطلاعات ورود را بررسی کنید.</string>
-    <string name="error_timeout">اتصال بعد از ۳۰ ثانیه برقرار نشد. آدرس سرور و باز بودن پورت‌های UDP 500 و 4500 را بررسی کنید.</string>
+    <string name="error_timeout">اتصال بعد از ۴۵ ثانیه برقرار نشد. آدرس سرور و باز بودن پورت‌های UDP 500 و 4500 را بررسی کنید.</string>
     <string name="error_unknown">اتصال ناموفق بود: %1$s</string>
     <string name="error_platform">گزارش اندروید: %1$s</string>
     <string name="action_dismiss">بستن</string>

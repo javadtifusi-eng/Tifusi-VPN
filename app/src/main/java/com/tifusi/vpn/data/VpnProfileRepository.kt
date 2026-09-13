@@ -20,8 +20,12 @@ class VpnProfileRepository(private val context: Context) {
     private val profilesKey = stringPreferencesKey("profiles")
     private val selectedProfileIdKey = stringPreferencesKey("selected_profile_id")
     private val subscriptionUrlKey = stringPreferencesKey("subscription_url")
+    private val supportTelegramKey = stringPreferencesKey("support_telegram")
 
     val subscriptionUrl: Flow<String?> = context.dataStore.data.map { it[subscriptionUrlKey] }
+
+    /** The support Telegram of the panel the subscription came from, if it sets one. */
+    val supportTelegram: Flow<String?> = context.dataStore.data.map { it[supportTelegramKey] }
 
     val profiles: Flow<List<VpnProfile>> = context.dataStore.data.map { prefs ->
         prefs[profilesKey]?.let { decodeProfiles(it) } ?: emptyList()
@@ -49,12 +53,14 @@ class VpnProfileRepository(private val context: Context) {
     }
 
     /** Swaps in a subscription's current servers, keeping manually added profiles untouched. */
-    suspend fun replaceSubscriptionProfiles(url: String, fetched: List<VpnProfile>) {
+    suspend fun replaceSubscriptionProfiles(url: String, subscription: Subscription) {
         context.dataStore.edit { prefs ->
             val current = prefs[profilesKey]?.let { decodeProfiles(it) } ?: emptyList()
             val manual = current.filterNot { it.id.startsWith(SubscriptionClient.ID_PREFIX) }
-            prefs[profilesKey] = encodeProfiles(manual + fetched)
+            prefs[profilesKey] = encodeProfiles(manual + subscription.profiles)
             prefs[subscriptionUrlKey] = url
+            val supportTelegram = subscription.supportTelegram
+            if (supportTelegram != null) prefs[supportTelegramKey] = supportTelegram else prefs.remove(supportTelegramKey)
         }
     }
 

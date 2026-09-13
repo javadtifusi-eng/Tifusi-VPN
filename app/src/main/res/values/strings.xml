@@ -149,6 +149,8 @@
 
     <!-- Misc -->
     <string name="language">Language</string>
+    <string name="contact_us">Contact us</string>
+    <string name="contact_telegram">Telegram %1$s</string>
     <string name="settings">Settings</string>
     <string name="ikev2_unsupported_version">Your Android version does not support automatic IKEv2. You will be taken to Settings instead.</string>
 </resources>

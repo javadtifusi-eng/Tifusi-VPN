@@ -2,6 +2,7 @@ package com.tifusi.vpn.data
 
 import android.content.Context
 import android.provider.Settings
+import com.tifusi.vpn.BuildConfig
 import com.tifusi.vpn.vpn.CertificateStore
 import com.tifusi.vpn.vpn.Ikev2AuthType
 import com.tifusi.vpn.vpn.VpnProfile
@@ -24,6 +25,9 @@ sealed class SubscriptionError(message: String) : Exception(message) {
     data class Network(val detail: String?) : SubscriptionError("Network: $detail")
 }
 
+/** A subscription's servers plus the panel's support Telegram, when the panel sets one. */
+data class Subscription(val profiles: List<VpnProfile>, val supportTelegram: String?)
+
 /**
  * Imports a Tifusi Panel subscription from either the link (`<panel>/sub/<secret>`) or the short
  * app code shown on the user's subscription page (e.g. `javad7KQ4MP9X`), fetched as
@@ -38,16 +42,25 @@ object SubscriptionClient {
 
     private val LINK = Regex("""^(https?://\S+?)/sub/([A-Za-z0-9-]{16,})/?(?:[?#]\S*)?$""", RegexOption.IGNORE_CASE)
 
-    /** Resolves a pasted link, or a code read out from the panel, to the panel endpoint base. */
+    /**
+     * Resolves a pasted link, or a code read out from the panel, to the panel endpoint base. A bare
+     * code resolves against the panel this build ships with (tifusi.panelUrl in gradle.properties);
+     * `CODE@panel.example.com` reaches any other panel.
+     */
     fun normalize(input: String): String? {
         val value = input.trim()
         LINK.matchEntire(value)?.let { return "${it.groupValues[1]}/sub/${it.groupValues[2]}" }
-        if ("://" in value || value.length !in 9..128 || value.any { it.isWhitespace() || it == '/' }) return null
-        return "$DEFAULT_PANEL_URL/code/" + URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+        if ("://" in value || value.any { it.isWhitespace() || it == '/' }) return null
+        val at = value.lastIndexOf('@')
+        val code = if (at >= 0) value.substring(0, at) else value
+        val panel = if (at >= 0) value.substring(at + 1).takeIf { it.isNotEmpty() }?.let { "https://$it" }
+        else BuildConfig.DEFAULT_PANEL_URL.trimEnd('/').takeIf { it.isNotEmpty() }
+        if (panel == null || code.length !in 9..128) return null
+        return "$panel/code/" + URLEncoder.encode(code, "UTF-8").replace("+", "%20")
     }
 
     /** Blocking network call; invoke off the main thread. */
-    fun fetchProfiles(context: Context, link: String): List<VpnProfile> {
+    fun fetchProfiles(context: Context, link: String): Subscription {
         val normalized = normalize(link) ?: throw SubscriptionError.NotASubscriptionLink
         // A stable per-install id, so the panel's device limit counts this phone once even as
         // its mobile IP changes between refreshes.
@@ -71,7 +84,9 @@ object SubscriptionClient {
                 404 -> throw if (body.contains("Not found")) SubscriptionError.NotFound else SubscriptionError.PanelOutdated
                 else -> throw SubscriptionError.Network("HTTP $code")
             }
-            return parse(JSONObject(body)).ifEmpty { throw SubscriptionError.NoServers }
+            val json = JSONObject(body)
+            val profiles = parse(json).ifEmpty { throw SubscriptionError.NoServers }
+            return Subscription(profiles, json.str("support_telegram"))
         } catch (e: SubscriptionError) {
             throw e
         } catch (e: Exception) {
@@ -140,7 +155,4 @@ object SubscriptionClient {
         if (has(key) && !isNull(key)) optString(key).takeIf { it.isNotBlank() } else null
 
     private const val TIMEOUT_MS = 15_000
-
-    // A code carries no panel address, so codes resolve against this panel.
-    private const val DEFAULT_PANEL_URL = "https://ge.koledemb.ir"
 }

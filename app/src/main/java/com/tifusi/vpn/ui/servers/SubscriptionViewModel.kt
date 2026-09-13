@@ -1,8 +1,11 @@
 package com.tifusi.vpn.ui.servers
 
 import android.app.Application
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.tifusi.vpn.data.ConnectionReporter
+import com.tifusi.vpn.data.NetworkSnapshot
 import com.tifusi.vpn.data.SubscriptionClient
 import com.tifusi.vpn.data.SubscriptionError
 import com.tifusi.vpn.data.VpnProfileRepository
@@ -55,13 +58,22 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
         if (_state.value.isLoading) return
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {
+            val network = withContext(Dispatchers.IO) { NetworkSnapshot.capture(getApplication()) }
+            val startedAt = SystemClock.elapsedRealtime()
             val message = try {
                 val result = withContext(Dispatchers.IO) {
                     SubscriptionClient.fetchProfiles(getApplication(), link)
                 }
                 repository.replaceSubscriptionProfiles(link.trim(), result)
+                // A fresh import is the first moment reports queued before any subscription was
+                // saved can be attributed, so try sending them right away.
+                ConnectionReporter.recordSubscriptionFetch(
+                    getApplication(), network, startedAt, null,
+                    uploadAfterMs = listOf(ConnectionReporter.UPLOAD_SOON_MS),
+                )
                 SubscriptionMessage.Imported(result.profiles.size)
             } catch (e: SubscriptionError) {
+                ConnectionReporter.recordSubscriptionFetch(getApplication(), network, startedAt, e)
                 SubscriptionMessage.Failed(e)
             }
             _state.update { it.copy(isLoading = false, message = message) }

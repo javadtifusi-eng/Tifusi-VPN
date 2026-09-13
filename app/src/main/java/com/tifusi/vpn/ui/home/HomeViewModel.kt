@@ -5,6 +5,8 @@ import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import android.os.SystemClock
+import com.tifusi.vpn.data.ConnectionReporter
+import com.tifusi.vpn.data.NetworkSnapshot
 import com.tifusi.vpn.data.SubscriptionClient
 import com.tifusi.vpn.data.SubscriptionInfo
 import com.tifusi.vpn.data.VpnProfileRepository
@@ -72,9 +74,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         // subscription once per launch. Silent: offline or a failing panel keeps the last numbers.
         viewModelScope.launch(Dispatchers.IO) {
             val url = repository.subscriptionUrl.first() ?: return@launch
-            runCatching { SubscriptionClient.fetchProfiles(getApplication(), url) }
-                .getOrNull()
-                ?.let { repository.replaceSubscriptionProfiles(url, it) }
+            val network = NetworkSnapshot.capture(getApplication())
+            val startedAt = SystemClock.elapsedRealtime()
+            val result = runCatching { SubscriptionClient.fetchProfiles(getApplication(), url) }
+            result.getOrNull()?.let { repository.replaceSubscriptionProfiles(url, it) }
+            // Only failures: a successful refresh on every launch would bury the reports that matter.
+            result.exceptionOrNull()?.let { error ->
+                ConnectionReporter.recordSubscriptionFetch(getApplication(), network, startedAt, error)
+            }
+            // Sends whatever earlier runs recorded but could not deliver, this refresh's failure included.
+            ConnectionReporter.uploadLater(getApplication(), ConnectionReporter.UPLOAD_SOON_MS)
         }
 
         // Reconciles with the platform and drives the duration, traffic and speed readouts.

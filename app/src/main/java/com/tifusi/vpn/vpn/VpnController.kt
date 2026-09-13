@@ -6,6 +6,10 @@ import android.net.ConnectivityManager
 import android.net.VpnManager
 import android.net.VpnService
 import android.os.SystemClock
+import com.tifusi.vpn.data.ConnectionReport
+import com.tifusi.vpn.data.ConnectionReporter
+import com.tifusi.vpn.data.NetworkSnapshot
+import com.tifusi.vpn.data.reportDetail
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +39,18 @@ class VpnController(private val context: Context) {
     private var trafficBaseline: LongArray? = null
     private var ikev2SessionKey: String? = null
 
+    // Reporting only observes the transitions below; it never feeds back into [state]. Results can
+    // be reached from the ticker, the UI and the network callback thread at once, so the attempt is
+    // taken under [reportLock] and recorded exactly once.
+    private val reportLock = Any()
+
+    /** The attempt started by [connect] whose result has not been recorded yet. */
+    private var pendingAttempt: ReportAttempt? = null
+
+    /** The attempt that last came up, so a drop soon after "Connected" is reported too. */
+    private var connectedAttempt: ReportAttempt? = null
+    private var connectedAttemptAtElapsedMs = 0L
+
     init {
         // On Android 11-12 there is no profile-state API, so the appearance of a VPN network is
         // the only signal that the IKEv2 tunnel actually came up.
@@ -59,6 +75,12 @@ class VpnController(private val context: Context) {
             return null
         }
 
+        // Only these two are tunnels the app runs itself and so can see the outcome of. Re-invoked
+        // after the consent dialog, this restarts the clock, so the duration excludes the dialog.
+        if (profile.protocol == VpnProtocol.IKEV2 || profile.protocol == VpnProtocol.WIREGUARD) {
+            beginAttempt(profile.protocol)
+        }
+
         return when (profile.protocol) {
             VpnProtocol.IKEV2 -> connectIkev2(profile)
             VpnProtocol.WIREGUARD -> connectWireGuard(profile)
@@ -70,6 +92,13 @@ class VpnController(private val context: Context) {
     }
 
     fun disconnect(profile: VpnProfile) {
+        // Taken before teardown: stopping the tunnel makes the platform report DEACTIVATED_BY_USER
+        // and drop the VPN network, which must not be recorded as a failure or an early drop.
+        val wasConnecting = _state.value is VpnConnectionState.Connecting
+        val cancelled = synchronized(reportLock) {
+            connectedAttempt = null
+            pendingAttempt.also { pendingAttempt = null }
+        }
         when (profile.protocol) {
             VpnProtocol.IKEV2 -> ikev2Manager?.disconnect()
             VpnProtocol.WIREGUARD -> runCatching { wireGuardManager.disconnect() }
@@ -77,6 +106,14 @@ class VpnController(private val context: Context) {
             VpnProtocol.L2TP, VpnProtocol.PPTP -> Unit
         }
         markDisconnected()
+        // A user giving up on an endless "Connecting" is the failure the owner most needs to see.
+        if (wasConnecting && cancelled != null) {
+            recordConnect(
+                cancelled, ConnectionReport.RESULT_FAILED,
+                "Cancelled by user while connecting",
+                SystemClock.elapsedRealtime() - cancelled.startedElapsedMs,
+            )
+        }
     }
 
     /** Clears a transient error or hand-off state without touching any tunnel. */
@@ -112,7 +149,7 @@ class VpnController(private val context: Context) {
             SystemClock.elapsedRealtime() - connectingSince > CONNECT_TIMEOUT_MS
         ) {
             if (activeProtocol == VpnProtocol.IKEV2) ikev2Manager?.disconnect()
-            fail(lastPlatformEvent?.let { VpnFailure.Platform(it) } ?: VpnFailure.Timeout)
+            fail(lastPlatformEvent?.let { VpnFailure.Platform(it) } ?: VpnFailure.Timeout, timedOut = true)
         }
     }
 
@@ -207,6 +244,21 @@ class VpnController(private val context: Context) {
         connectedSinceElapsedMs = SystemClock.elapsedRealtime()
         trafficBaseline = deviceTrafficCounters()
         _state.value = VpnConnectionState.Connected
+
+        val now = SystemClock.elapsedRealtime()
+        val attempt = synchronized(reportLock) {
+            pendingAttempt?.also {
+                pendingAttempt = null
+                connectedAttempt = it
+                connectedAttemptAtElapsedMs = now
+            }
+        }
+        if (attempt != null) {
+            recordConnect(
+                attempt, ConnectionReport.RESULT_CONNECTED, "", now - attempt.startedElapsedMs,
+                uploadAfterMs = listOf(ConnectionReporter.UPLOAD_SOON_MS, ConnectionReporter.UPLOAD_THROUGH_TUNNEL_MS),
+            )
+        }
     }
 
     private fun markDisconnected() {
@@ -215,14 +267,88 @@ class VpnController(private val context: Context) {
         connectedSinceElapsedMs = null
         trafficBaseline = null
         _state.value = VpnConnectionState.Disconnected
+
+        // disconnect() clears the attempt first, so reaching this means the tunnel went down alone.
+        recordEarlyDrop("Tunnel went down (VPN network lost or platform state DISCONNECTED)")
     }
 
-    private fun fail(failure: VpnFailure) {
+    /** [timedOut] marks the [CONNECT_TIMEOUT_MS] path, whose [failure] is only the last known reason. */
+    private fun fail(failure: VpnFailure, timedOut: Boolean = false) {
         activeProtocol = null
         connectingSinceElapsedMs = null
         connectedSinceElapsedMs = null
         _state.value = VpnConnectionState.Failed(failure)
+
+        val attempt = synchronized(reportLock) { pendingAttempt.also { pendingAttempt = null } }
+        if (attempt != null) {
+            val detail = when {
+                !timedOut -> failure.reportDetail()
+                failure is VpnFailure.Platform ->
+                    "No result after ${CONNECT_TIMEOUT_MS / 1000} s; last platform event: ${failure.reportDetail()}"
+                else -> "No result after ${CONNECT_TIMEOUT_MS / 1000} s; no platform event"
+            }
+            recordConnect(
+                attempt,
+                if (timedOut) ConnectionReport.RESULT_TIMEOUT else ConnectionReport.RESULT_FAILED,
+                detail,
+                SystemClock.elapsedRealtime() - attempt.startedElapsedMs,
+            )
+        }
+        recordEarlyDrop(failure.reportDetail())
     }
+
+    private fun beginAttempt(protocol: VpnProtocol) {
+        // Before provisioning or starting anything, so this is still the phone's own network.
+        val network = NetworkSnapshot.capture(context)
+        val attempt = ReportAttempt(protocol, SystemClock.elapsedRealtime(), network)
+        synchronized(reportLock) {
+            pendingAttempt = attempt
+            connectedAttempt = null
+        }
+    }
+
+    /**
+     * A tunnel that reaches "Connected" and dies within seconds looks like success in a
+     * "connected" report alone; typically the server accepted IKE but the traffic path is broken.
+     */
+    private fun recordEarlyDrop(cause: String) {
+        val now = SystemClock.elapsedRealtime()
+        var upMs = 0L
+        val dropped = synchronized(reportLock) {
+            val attempt = connectedAttempt
+            connectedAttempt = null
+            upMs = now - connectedAttemptAtElapsedMs
+            attempt?.takeIf { upMs <= EARLY_DROP_MS }
+        } ?: return
+        recordConnect(dropped, ConnectionReport.RESULT_DISCONNECTED_EARLY, "Up for $upMs ms, then: $cause", null)
+    }
+
+    private fun recordConnect(
+        attempt: ReportAttempt,
+        result: String,
+        detail: String,
+        durationMs: Long?,
+        uploadAfterMs: List<Long> = listOf(ConnectionReporter.UPLOAD_SOON_MS),
+    ) {
+        val report = ConnectionReport(
+            at = System.currentTimeMillis(),
+            event = ConnectionReport.EVENT_CONNECT,
+            result = result,
+            detail = detail,
+            protocol = attempt.protocol.name,
+            durationMs = durationMs,
+            network = attempt.network.network,
+            carrier = attempt.network.carrier,
+            simCarrier = attempt.network.simCarrier,
+        )
+        ConnectionReporter.record(context, report, uploadAfterMs)
+    }
+
+    private class ReportAttempt(
+        val protocol: VpnProtocol,
+        val startedElapsedMs: Long,
+        val network: NetworkSnapshot,
+    )
 
     /** Must be called when the owner goes away, or each controller leaks a network callback. */
     fun close() {
@@ -270,6 +396,9 @@ class VpnController(private val context: Context) {
         // Longer than the IKE library's ~31 s of retransmits, so its PROTOCOL_TIMEOUT event
         // arrives while still Connecting and is shown instead of the generic timeout.
         private const val CONNECT_TIMEOUT_MS = 45_000L
+
+        /** A drop within this long after "Connected" is reported as disconnected_early. */
+        private const val EARLY_DROP_MS = 10_000L
 
         // Never a real key: the platform's keys are UUIDs.
         private const val PENDING_SESSION = ""

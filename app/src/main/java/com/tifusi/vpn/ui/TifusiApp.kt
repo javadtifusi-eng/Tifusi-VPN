@@ -1,6 +1,5 @@
 package com.tifusi.vpn.ui
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
@@ -22,8 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -34,15 +31,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tifusi.vpn.R
-import com.tifusi.vpn.qr.ImportResult
-import com.tifusi.vpn.qr.QrConfigParser
 import com.tifusi.vpn.ui.home.HomeScreen
 import com.tifusi.vpn.ui.home.HomeViewModel
 import com.tifusi.vpn.ui.profile.ProfileScreen
 import com.tifusi.vpn.ui.servers.AddServerScreen
 import com.tifusi.vpn.ui.servers.AddServerViewModel
-import com.tifusi.vpn.ui.servers.ScanQrScreen
 import com.tifusi.vpn.ui.servers.ServersScreen
+import com.tifusi.vpn.ui.servers.SubscriptionViewModel
 import com.tifusi.vpn.ui.services.ServicesScreen
 import com.tifusi.vpn.ui.theme.TifusiBackground
 import com.tifusi.vpn.ui.theme.TifusiNeonBlue
@@ -61,7 +56,6 @@ private enum class TifusiDestination(
 }
 
 private const val ROUTE_ADD_SERVER = "add_server"
-private const val ROUTE_SCAN_QR = "scan_qr"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,10 +64,10 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
-    // Activity-scoped so the QR screen can hand a scanned draft to the edit form.
+    // Activity-scoped so the Servers tab can hand a profile to the edit form.
     val addServerViewModel: AddServerViewModel = viewModel()
-    val clipboard = LocalClipboardManager.current
-    val context = LocalContext.current
+    val subscriptionViewModel: SubscriptionViewModel = viewModel()
+    val subscriptionState by subscriptionViewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = TifusiBackground,
@@ -137,20 +131,10 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                         addServerViewModel.startNew(homeState.selectedProtocol)
                         navController.navigate(ROUTE_ADD_SERVER)
                     },
-                    onScanQr = { navController.navigate(ROUTE_SCAN_QR) },
-                    onPasteFromPanel = {
-                        val text = clipboard.getText()?.text.orEmpty()
-                        when (val result = QrConfigParser.parse(text)) {
-                            is ImportResult.Profile -> {
-                                addServerViewModel.loadDraft(result.profile, isExisting = false)
-                                navController.navigate(ROUTE_ADD_SERVER)
-                            }
-                            ImportResult.SubscriptionLink ->
-                                Toast.makeText(context, R.string.qr_subscription_link, Toast.LENGTH_LONG).show()
-                            ImportResult.Unrecognized ->
-                                Toast.makeText(context, R.string.clipboard_unrecognized, Toast.LENGTH_LONG).show()
-                        }
-                    },
+                    subscription = subscriptionState,
+                    onSubscriptionLinkChange = subscriptionViewModel::onLinkChange,
+                    onImportSubscription = subscriptionViewModel::importLink,
+                    onRefreshSubscription = subscriptionViewModel::refresh,
                 )
             }
 
@@ -162,19 +146,6 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                 AddServerScreen(
                     viewModel = addServerViewModel,
                     onDone = { navController.popBackStack() },
-                )
-            }
-
-            composable(ROUTE_SCAN_QR) {
-                ScanQrScreen(
-                    onProfileScanned = { profile ->
-                        addServerViewModel.loadDraft(profile, isExisting = false)
-                        // Replace the scanner with the review form so Back returns to Servers.
-                        navController.navigate(ROUTE_ADD_SERVER) {
-                            popUpTo(ROUTE_SCAN_QR) { inclusive = true }
-                        }
-                    },
-                    onCancel = { navController.popBackStack() },
                 )
             }
         }

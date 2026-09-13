@@ -19,6 +19,9 @@ class VpnProfileRepository(private val context: Context) {
 
     private val profilesKey = stringPreferencesKey("profiles")
     private val selectedProfileIdKey = stringPreferencesKey("selected_profile_id")
+    private val subscriptionUrlKey = stringPreferencesKey("subscription_url")
+
+    val subscriptionUrl: Flow<String?> = context.dataStore.data.map { it[subscriptionUrlKey] }
 
     val profiles: Flow<List<VpnProfile>> = context.dataStore.data.map { prefs ->
         prefs[profilesKey]?.let { decodeProfiles(it) } ?: emptyList()
@@ -43,6 +46,16 @@ class VpnProfileRepository(private val context: Context) {
 
     suspend fun setSelectedProfile(profileId: String) {
         context.dataStore.edit { prefs -> prefs[selectedProfileIdKey] = profileId }
+    }
+
+    /** Swaps in a subscription's current servers, keeping manually added profiles untouched. */
+    suspend fun replaceSubscriptionProfiles(url: String, fetched: List<VpnProfile>) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[profilesKey]?.let { decodeProfiles(it) } ?: emptyList()
+            val manual = current.filterNot { it.id.startsWith(SubscriptionClient.ID_PREFIX) }
+            prefs[profilesKey] = encodeProfiles(manual + fetched)
+            prefs[subscriptionUrlKey] = url
+        }
     }
 
     suspend fun getProfile(profileId: String): VpnProfile? =

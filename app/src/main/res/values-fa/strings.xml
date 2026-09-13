@@ -30,7 +30,6 @@
     <!-- Add server -->
     <string name="add_server">افزودن سرور</string>
     <string name="add_manually">ورود دستی</string>
-    <string name="scan_qr_code">اسکن بارکد</string>
     <string name="field_name">نام پروفایل</string>
     <string name="field_server_address">آدرس سرور</string>
     <string name="field_remote_id">شناسه سرور (Remote ID، اختیاری)</string>
@@ -107,16 +106,22 @@
     <string name="action_dismiss">بستن</string>
 
     <!-- Servers -->
-    <string name="no_servers_yet">هنوز سروری اضافه نشده. به‌صورت دستی اضافه کنید یا بارکد را اسکن کنید.</string>
+    <string name="no_servers_yet">هنوز سروری اضافه نشده. لینک اشتراک را بالا وارد کنید.</string>
 
     <!-- QR -->
-    <string name="camera_permission_required">برای اسکن بارکد، دسترسی دوربین لازم است</string>
     <string name="grant_permission">اجازه دادن</string>
-    <string name="qr_unrecognized">این بارکد، کد وارد کردن IKEv2 یا L2TP پنل تیفوسی یا کانفیگ WireGuard نیست</string>
-    <string name="qr_subscription_link">این لینک اشتراک است. در صفحه‌ی پنل، بارکد داخل کارت IKEv2 یا L2TP را اسکن کنید.</string>
-    <string name="paste_from_panel">چسباندن از پنل</string>
-    <string name="clipboard_unrecognized">کلیپ‌بورد کانفیگ پنل تیفوسی ندارد. اول در پنل، دکمه‌ی «کپی» کارت IKEv2 یا L2TP را بزنید.</string>
-    <string name="qr_point_camera">دوربین را روی بارکد پنل بگیرید</string>
+    <string name="subscription_title">شناسه یا لینک اشتراک</string>
+    <string name="subscription_hint">مثلاً javad7KQ4MP9X</string>
+    <string name="subscription_paste">چسباندن</string>
+    <string name="subscription_add">دریافت سرورها</string>
+    <string name="subscription_refresh">به‌روزرسانی</string>
+    <string name="subscription_imported">%1$d سرور از اشتراک دریافت شد</string>
+    <string name="sub_error_link">شناسه‌ی اشتراک (مثل javad7KQ4MP9X) یا لینک کامل اشتراک را وارد کنید.</string>
+    <string name="sub_error_not_found">پنل این شناسه یا لینک را نمی‌شناسد. املای آن را چک کنید یا شناسه‌ی فعلی را از پنل بگیرید.</string>
+    <string name="sub_error_device_limit">سقف تعداد دستگاه این اشتراک پر شده است.</string>
+    <string name="sub_error_panel_outdated">پنل باید به‌روزرسانی شود تا اپ بتواند اشتراک را دریافت کند.</string>
+    <string name="sub_error_no_servers">این اشتراک سرور IKEv2 یا L2TP ندارد.</string>
+    <string name="sub_error_network">اتصال به پنل ممکن نشد: %1$s</string>
 
     <!-- Profile / settings -->
     <string name="language_fa">فارسی</string>

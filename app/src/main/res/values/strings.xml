@@ -30,7 +30,6 @@
     <!-- Add server -->
     <string name="add_server">Add Server</string>
     <string name="add_manually">Enter Manually</string>
-    <string name="scan_qr_code">Scan QR Code</string>
     <string name="field_name">Profile Name</string>
     <string name="field_server_address">Server Address</string>
     <string name="field_remote_id">Remote ID (optional)</string>
@@ -107,16 +106,22 @@
     <string name="action_dismiss">Dismiss</string>
 
     <!-- Servers -->
-    <string name="no_servers_yet">No servers yet. Add one manually or scan a QR code.</string>
+    <string name="no_servers_yet">No servers yet. Paste your subscription link above.</string>
 
     <!-- QR -->
-    <string name="camera_permission_required">Camera permission is needed to scan QR codes</string>
     <string name="grant_permission">Grant Permission</string>
-    <string name="qr_unrecognized">This isn\'t an IKEv2 or L2TP import code from Tifusi Panel, or a WireGuard config</string>
-    <string name="qr_subscription_link">This is the subscription link. On the panel\'s page, scan the QR code inside the IKEv2 or L2TP card instead.</string>
-    <string name="paste_from_panel">Paste from Panel</string>
-    <string name="clipboard_unrecognized">The clipboard has no Tifusi Panel config. Tap Copy on the IKEv2 or L2TP card in the panel first.</string>
-    <string name="qr_point_camera">Point the camera at the QR code from your panel</string>
+    <string name="subscription_title">Subscription code or link</string>
+    <string name="subscription_hint">e.g. javad7KQ4MP9X</string>
+    <string name="subscription_paste">Paste</string>
+    <string name="subscription_add">Get servers</string>
+    <string name="subscription_refresh">Refresh</string>
+    <string name="subscription_imported">%1$d servers imported from your subscription</string>
+    <string name="sub_error_link">Enter the subscription code from your panel (like javad7KQ4MP9X) or the full subscription link.</string>
+    <string name="sub_error_not_found">The panel doesn\'t recognize this code or link. Check the spelling, or get the current one from the panel.</string>
+    <string name="sub_error_device_limit">This subscription has reached its device limit.</string>
+    <string name="sub_error_panel_outdated">The panel needs an update before the app can import subscriptions.</string>
+    <string name="sub_error_no_servers">This subscription has no IKEv2 or L2TP servers.</string>
+    <string name="sub_error_network">Couldn\'t reach the panel: %1$s</string>
 
     <!-- Profile / settings -->
     <string name="language_fa">فارسی</string>

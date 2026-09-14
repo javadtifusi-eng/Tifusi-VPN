@@ -1,6 +1,9 @@
 package com.tifusi.vpn.ui
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Dns
@@ -19,9 +22,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -75,7 +82,23 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
         containerColor = TifusiBackground,
         topBar = {
             TopAppBar(
-                title = { Text(text = stringResource(R.string.app_name)) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // The launcher layer keeps the mark inside the adaptive-icon safe zone, so it is
+                        // scaled up here; the margin around it is transparent.
+                        Image(
+                            painter = painterResource(R.drawable.ic_launcher_foreground),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .graphicsLayer(scaleX = 2.2f, scaleY = 2.2f),
+                        )
+                        Text(
+                            text = stringResource(R.string.app_name),
+                            modifier = Modifier.padding(start = 10.dp),
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = TifusiBackground),
                 actions = {
                     IconButton(onClick = { navController.navigateToTab(TifusiDestination.PROFILE) }) {

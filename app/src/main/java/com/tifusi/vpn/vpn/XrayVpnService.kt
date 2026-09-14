@@ -208,7 +208,7 @@ class XrayVpnService : VpnService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_logo_shield)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(
                 if (serverName.isBlank()) getString(R.string.notification_vless_active)

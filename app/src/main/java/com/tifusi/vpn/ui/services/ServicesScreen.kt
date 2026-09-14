@@ -89,7 +89,7 @@ fun ServicesScreen() {
                 UpdateState.Failed -> InfoCard(stringResource(R.string.update_failed), color = TifusiTextSecondary)
                 is UpdateState.Available -> {
                     InfoCard(
-                        stringResource(R.string.update_available, state.release.buildNumber.toString()),
+                        stringResource(R.string.update_available, state.release.versionName),
                         color = TifusiNeonGreen,
                     )
                     // The browser or download manager fetches the APK and offers to install it.

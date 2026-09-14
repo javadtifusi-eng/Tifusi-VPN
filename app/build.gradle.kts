@@ -14,8 +14,10 @@ android {
         // CI passes its run number, which is also the release tag (v<number>), so the About tab
         // can compare this build against the latest release.
         val buildNumber = providers.gradleProperty("tifusi.buildNumber").getOrElse("1").toInt()
+        val versionBase = providers.gradleProperty("tifusi.versionBase").getOrElse("0").toInt()
         versionCode = buildNumber
-        versionName = buildNumber.toString()
+        versionName = "1.${(buildNumber - versionBase).coerceAtLeast(0)}"
+        buildConfigField("int", "VERSION_BASE", "$versionBase")
 
         buildConfigField("String", "DEFAULT_PANEL_URL", "\"${providers.gradleProperty("tifusi.panelUrl").getOrElse("")}\"")
         buildConfigField("String", "SUPPORT_TELEGRAM", "\"${providers.gradleProperty("tifusi.supportTelegram").getOrElse("")}\"")

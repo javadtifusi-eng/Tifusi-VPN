@@ -6,7 +6,10 @@ import java.net.URL
 import org.json.JSONObject
 
 /** The newest published build and the fixed URL its APK downloads from. */
-data class LatestRelease(val buildNumber: Int, val downloadUrl: String)
+data class LatestRelease(val buildNumber: Int, val downloadUrl: String) {
+    // Same mapping as versionName in app/build.gradle.kts.
+    val versionName: String get() = "1.${(buildNumber - BuildConfig.VERSION_BASE).coerceAtLeast(0)}"
+}
 
 /**
  * Reads the latest GitHub release of [BuildConfig.UPDATE_REPO]. CI tags every build v<run number>

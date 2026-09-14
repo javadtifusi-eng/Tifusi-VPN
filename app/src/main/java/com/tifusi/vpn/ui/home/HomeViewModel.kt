@@ -126,7 +126,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             while (true) {
                 if (_uiState.value.connectionState is VpnConnectionState.Connected) {
-                    val latency = measureInternet()
+                    val latency = if (_uiState.value.selectedProfile?.protocol == VpnProtocol.VLESS) {
+                        // This app bypasses its own VLESS tunnel, so only the core can test it.
+                        controller.vlessLatencyMs(INTERNET_CHECK_URL)
+                    } else {
+                        measureInternet()
+                    }
                     if (_uiState.value.connectionState is VpnConnectionState.Connected) {
                         _uiState.update { it.copy(internetChecked = true, internetLatencyMs = latency) }
                     }

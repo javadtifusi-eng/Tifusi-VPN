@@ -38,4 +38,8 @@ data class VpnProfile(
     val wireGuardDnsServers: String? = null,
     val wireGuardEndpointPort: Int? = null,
     val wireGuardAllowedIps: String = "0.0.0.0/0, ::/0",
+
+    // VLESS: the raw vless:// share link, parsed by VlessLink on each connect. [serverAddress] only
+    // mirrors its host for display.
+    val vlessLink: String? = null,
 )

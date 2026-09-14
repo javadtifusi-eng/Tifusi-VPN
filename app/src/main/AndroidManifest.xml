@@ -53,6 +53,21 @@
             </intent-filter>
         </service>
 
+        <!-- VLESS through the embedded Xray core. specialUse is what v2rayNG declares for the same
+             kind of service; Android 14 requires a foreground service type. -->
+        <service
+            android:name=".vpn.XrayVpnService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="vpn" />
+        </service>
+
         <service
             android:name="com.wireguard.android.backend.GoBackend$VpnService"
             android:permission="android.permission.BIND_VPN_SERVICE"

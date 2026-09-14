@@ -4,6 +4,7 @@ import android.content.Context
 import com.tifusi.vpn.R
 import com.tifusi.vpn.vpn.CertificateProblem
 import com.tifusi.vpn.vpn.ValidationIssue
+import com.tifusi.vpn.vpn.VlessLinkProblem
 import com.tifusi.vpn.vpn.VpnFailure
 import java.text.DateFormat
 
@@ -20,6 +21,9 @@ fun ValidationIssue.localized(context: Context): String = when (this) {
     ValidationIssue.MissingWireGuardPrivateKey -> context.getString(R.string.error_missing_wg_private_key)
     ValidationIssue.MissingWireGuardPeerKey -> context.getString(R.string.error_missing_wg_peer_key)
     ValidationIssue.MissingWireGuardAddress -> context.getString(R.string.error_missing_wg_address)
+    ValidationIssue.MissingVlessLink -> context.getString(R.string.error_missing_vless_link)
+    ValidationIssue.VlessInsecureIgnored -> context.getString(R.string.error_vless_insecure_ignored)
+    is ValidationIssue.BadVlessLink -> problem.localized(context)
     is ValidationIssue.BadServerCa -> problem.localized(context)
     is ValidationIssue.BadClientCertificate -> problem.localized(context)
 }
@@ -31,6 +35,22 @@ fun VpnFailure.localized(context: Context): String = when (this) {
     is VpnFailure.Platform -> context.getString(R.string.error_platform, event.describe())
     VpnFailure.Deactivated -> context.getString(R.string.error_deactivated)
     is VpnFailure.Unknown -> context.getString(R.string.error_unknown, detail ?: "-")
+    // The core's own text, untranslated, like the platform reports: it is what gets diagnosed.
+    is VpnFailure.Xray -> context.getString(R.string.error_xray, detail)
+}
+
+fun VlessLinkProblem.localized(context: Context): String = when (this) {
+    VlessLinkProblem.NotAVlessLink -> context.getString(R.string.vless_error_not_vless)
+    VlessLinkProblem.MissingUuid -> context.getString(R.string.vless_error_missing_uuid)
+    VlessLinkProblem.BadUuid -> context.getString(R.string.vless_error_bad_uuid)
+    VlessLinkProblem.MissingAddress -> context.getString(R.string.vless_error_missing_address)
+    VlessLinkProblem.BadPort -> context.getString(R.string.vless_error_bad_port)
+    is VlessLinkProblem.UnsupportedNetwork -> context.getString(R.string.vless_error_network, network)
+    is VlessLinkProblem.UnsupportedSecurity -> context.getString(R.string.vless_error_security, security)
+    is VlessLinkProblem.UnsupportedHeaderType -> context.getString(R.string.vless_error_header, headerType)
+    VlessLinkProblem.MissingRealityPublicKey -> context.getString(R.string.vless_error_reality_pbk)
+    VlessLinkProblem.MissingRealityServerName -> context.getString(R.string.vless_error_reality_sni)
+    VlessLinkProblem.PlaintextNotAllowed -> context.getString(R.string.vless_error_plaintext)
 }
 
 fun CertificateProblem.localized(context: Context): String {

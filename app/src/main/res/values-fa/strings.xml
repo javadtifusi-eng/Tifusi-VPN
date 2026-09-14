@@ -20,6 +20,8 @@
     <string name="protocol_pptp_tagline">سریع و سبک</string>
     <string name="protocol_wireguard">WireGuard</string>
     <string name="protocol_wireguard_tagline">جدید و قدرتمند</string>
+    <string name="protocol_vless">VLESS</string>
+    <string name="protocol_vless_tagline">Reality، سریع و مقاوم در برابر فیلتر</string>
 
     <!-- Navigation -->
     <string name="nav_home">خانه</string>
@@ -65,6 +67,11 @@
     <string name="field_wg_port">پورت</string>
     <string name="field_wg_allowed_ips">آی‌پی‌های مجاز</string>
 
+    <!-- VLESS -->
+    <string name="field_vless_link">لینک vless://</string>
+    <string name="vless_link_hint">لینک vless:// را از پنل بچسبانید. سرور، کلیدها و نوع اتصال همه از خود لینک خوانده می‌شوند.</string>
+    <string name="vless_paste_link">چسباندن لینک</string>
+
     <!-- Validation errors -->
     <string name="error_missing_server_address">آدرس سرور الزامی است</string>
     <string name="error_missing_local_id">شناسه محلی را وارد کنید: گواهی کلاینت CN ندارد که به‌جای آن استفاده شود.</string>
@@ -77,6 +84,19 @@
     <string name="error_missing_wg_private_key">کلید خصوصی WireGuard الزامی است</string>
     <string name="error_missing_wg_peer_key">کلید عمومی سرور الزامی است</string>
     <string name="error_missing_wg_address">آدرس اینترفیس الزامی است</string>
+    <string name="error_missing_vless_link">لینک vless:// را وارد کنید</string>
+    <string name="error_vless_insecure_ignored">این لینک می‌خواهد بررسی گواهی نادیده گرفته شود (allowInsecure). برنامه همیشه گواهی سرور را بررسی می‌کند، پس سروری که گواهی خودامضا دارد وصل نمی‌شود.</string>
+    <string name="vless_error_not_vless">این یک لینک vless:// نیست</string>
+    <string name="vless_error_missing_uuid">لینک قبل از @ شناسه‌ی کاربر ندارد</string>
+    <string name="vless_error_bad_uuid">شناسه‌ی کاربر در لینک معتبر نیست</string>
+    <string name="vless_error_missing_address">لینک آدرس سرور ندارد</string>
+    <string name="vless_error_bad_port">لینک پورت معتبر (۱ تا ۶۵۵۳۵) ندارد</string>
+    <string name="vless_error_network">نوع اتصال «%1$s» پشتیبانی نمی‌شود. پشتیبانی‌شده: tcp، ws، grpc، httpupgrade، xhttp.</string>
+    <string name="vless_error_security">امنیت «%1$s» پشتیبانی نمی‌شود. پشتیبانی‌شده: reality، tls، none.</string>
+    <string name="vless_error_header">نوع هدر TCP «%1$s» پشتیبانی نمی‌شود</string>
+    <string name="vless_error_reality_pbk">لینک Reality کلید عمومی (pbk) ندارد</string>
+    <string name="vless_error_reality_sni">لینک Reality نام سرور (sni) ندارد</string>
+    <string name="vless_error_plaintext">این لینک TLS یا Reality ندارد (security=none). اتصال VLESS بدون رمزنگاری به سرور عمومی مجاز نیست؛ لینک Reality یا TLS بگیرید.</string>
 
     <!-- Certificate errors -->
     <string name="cert_error_not_pem">این یک گواهی PEM معتبر نیست (سرتیتر BEGIN CERTIFICATE ندارد)</string>
@@ -103,6 +123,7 @@
     <string name="error_timeout">اتصال بعد از ۴۵ ثانیه برقرار نشد. آدرس سرور و باز بودن پورت‌های UDP 500 و 4500 را بررسی کنید.</string>
     <string name="error_unknown">اتصال ناموفق بود: %1$s</string>
     <string name="error_platform">گزارش اندروید: %1$s</string>
+    <string name="error_xray">اتصال VLESS ناموفق بود: %1$s</string>
     <string name="quota_days_left">%1$d روز مانده</string>
     <string name="quota_no_expiry">بدون انقضا</string>
     <string name="quota_expired">منقضی شده</string>
@@ -132,7 +153,7 @@
     <string name="sub_error_not_found">پنل این شناسه یا لینک را نمی‌شناسد. املای آن را چک کنید یا شناسه‌ی فعلی را از پنل بگیرید.</string>
     <string name="sub_error_device_limit">سقف تعداد دستگاه این اشتراک پر شده است.</string>
     <string name="sub_error_panel_outdated">پنل باید به‌روزرسانی شود تا اپ بتواند اشتراک را دریافت کند.</string>
-    <string name="sub_error_no_servers">این اشتراک سرور IKEv2 یا L2TP ندارد.</string>
+    <string name="sub_error_no_servers">این اشتراک سرور IKEv2، L2TP یا VLESS ندارد.</string>
     <string name="sub_error_network">اتصال به پنل ممکن نشد: %1$s</string>
 
     <!-- Profile / settings -->
@@ -171,4 +192,9 @@
     <string name="contact_telegram">تلگرام %1$s</string>
     <string name="settings">تنظیمات</string>
     <string name="ikev2_unsupported_version">نسخه اندروید شما از IKEv2 خودکار پشتیبانی نمی‌کند. به جای آن به تنظیمات هدایت می‌شوید.</string>
+
+    <!-- VPN notification -->
+    <string name="notification_channel_vpn">وضعیت VPN</string>
+    <string name="notification_vless_active">تونل VLESS روشن است</string>
+    <string name="notification_vless_server">VLESS · %1$s</string>
 </resources>

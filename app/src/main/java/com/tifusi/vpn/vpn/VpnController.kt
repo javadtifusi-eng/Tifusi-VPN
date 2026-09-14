@@ -16,8 +16,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Single entry point the UI uses to bring a tunnel up or down, regardless of protocol. Hides the
- * fact that IKEv2 goes through the platform VpnManager, WireGuard through its own backend, and
- * L2TP/PPTP can only be handed off to Settings.
+ * fact that IKEv2 goes through the platform VpnManager, WireGuard through its own backend, VLESS
+ * through the embedded Xray core in [XrayVpnService], and L2TP/PPTP can only be handed off to Settings.
  *
  * [connect] and [disconnect] may block (the WireGuard backend waits for its service), so callers
  * must invoke them off the main thread.
@@ -38,6 +38,9 @@ class VpnController(private val context: Context) {
     private var connectionCallback: ConnectivityManager.NetworkCallback? = null
     private var trafficBaseline: LongArray? = null
     private var ikev2SessionKey: String? = null
+
+    /** The [XrayVpnService] run this controller started; its status updates for other runs are stale. */
+    private var xrayRunId: Long? = null
 
     // Reporting only observes the transitions below; it never feeds back into [state]. Results can
     // be reached from the ticker, the UI and the network callback thread at once, so the attempt is
@@ -75,15 +78,18 @@ class VpnController(private val context: Context) {
             return null
         }
 
-        // Only these two are tunnels the app runs itself and so can see the outcome of. Re-invoked
-        // after the consent dialog, this restarts the clock, so the duration excludes the dialog.
-        if (profile.protocol == VpnProtocol.IKEV2 || profile.protocol == VpnProtocol.WIREGUARD) {
+        // Only these are tunnels the app runs itself and so can see the outcome of. Re-invoked after
+        // the consent dialog, this restarts the clock, so the duration excludes the dialog.
+        if (profile.protocol == VpnProtocol.IKEV2 || profile.protocol == VpnProtocol.WIREGUARD ||
+            profile.protocol == VpnProtocol.VLESS
+        ) {
             beginAttempt(profile.protocol)
         }
 
         return when (profile.protocol) {
             VpnProtocol.IKEV2 -> connectIkev2(profile)
             VpnProtocol.WIREGUARD -> connectWireGuard(profile)
+            VpnProtocol.VLESS -> connectVless(profile)
             VpnProtocol.L2TP, VpnProtocol.PPTP -> {
                 _state.value = VpnConnectionState.RequiresSystemSettings(profile)
                 null
@@ -102,6 +108,10 @@ class VpnController(private val context: Context) {
         when (profile.protocol) {
             VpnProtocol.IKEV2 -> ikev2Manager?.disconnect()
             VpnProtocol.WIREGUARD -> runCatching { wireGuardManager.disconnect() }
+            VpnProtocol.VLESS -> {
+                xrayRunId = null
+                XrayVpnService.stop()
+            }
             // Nothing app-side to tear down; the tunnel lives entirely in Settings.
             VpnProtocol.L2TP, VpnProtocol.PPTP -> Unit
         }
@@ -144,12 +154,24 @@ class VpnController(private val context: Context) {
             }
         }
 
+        if (activeProtocol == VpnProtocol.VLESS) reconcileVless()
+
         val connectingSince = connectingSinceElapsedMs
         if (_state.value is VpnConnectionState.Connecting && connectingSince != null &&
             SystemClock.elapsedRealtime() - connectingSince > CONNECT_TIMEOUT_MS
         ) {
-            if (activeProtocol == VpnProtocol.IKEV2) ikev2Manager?.disconnect()
-            fail(lastPlatformEvent?.let { VpnFailure.Platform(it) } ?: VpnFailure.Timeout, timedOut = true)
+            val failure = when (activeProtocol) {
+                VpnProtocol.VLESS -> {
+                    XrayVpnService.stop()
+                    xrayRunId = null
+                    VpnFailure.Xray("Core did not come up within ${CONNECT_TIMEOUT_MS / 1000} s")
+                }
+                else -> {
+                    if (activeProtocol == VpnProtocol.IKEV2) ikev2Manager?.disconnect()
+                    lastPlatformEvent?.let { VpnFailure.Platform(it) } ?: VpnFailure.Timeout
+                }
+            }
+            fail(failure, timedOut = true)
         }
     }
 
@@ -232,6 +254,56 @@ class VpnController(private val context: Context) {
         }
         return null
     }
+
+    private fun connectVless(profile: VpnProfile): Intent? {
+        // XrayVpnService is this app's own VpnService, so it has the same consent gate as WireGuard.
+        VpnService.prepare(context)?.let { return it }
+
+        activeProtocol = VpnProtocol.VLESS
+        markConnecting()
+        try {
+            // Returns at once; refresh() moves to Connected when the core reports it is running.
+            xrayRunId = XrayVpnService.start(context, profile)
+        } catch (e: Exception) {
+            // e.g. ForegroundServiceStartNotAllowedException when the app is no longer in the foreground.
+            fail(VpnFailure.Xray(e.message ?: e.javaClass.simpleName))
+        }
+        return null
+    }
+
+    /**
+     * Follows [XrayVpnService.status] for the run [connectVless] started. Driven by [refresh], so
+     * "Connected" appears within one tick of the core coming up.
+     */
+    private fun reconcileVless() {
+        val runId = xrayRunId ?: return
+        val status = XrayVpnService.status.value
+        if (status.runId != runId) return
+        when (status) {
+            is XrayStatus.Starting -> Unit
+            is XrayStatus.Running ->
+                if (_state.value is VpnConnectionState.Connecting) markConnected()
+            is XrayStatus.Failed -> {
+                xrayRunId = null
+                fail(VpnFailure.Xray(status.detail))
+            }
+            is XrayStatus.Revoked -> {
+                xrayRunId = null
+                fail(VpnFailure.Deactivated)
+            }
+            is XrayStatus.Stopped -> {
+                xrayRunId = null
+                markDisconnected()
+            }
+        }
+    }
+
+    /**
+     * Latency of [url] fetched through the VLESS core, or null when it does not get through. The app
+     * is excluded from its own VLESS tunnel (see [XrayVpnService]), so a plain request would test
+     * the phone's network instead.
+     */
+    fun vlessLatencyMs(url: String): Long? = XrayVpnService.measureDelayMs(url)
 
     private fun markConnecting() {
         lastPlatformEvent = null
@@ -365,6 +437,7 @@ class VpnController(private val context: Context) {
     fun trafficStats(profile: VpnProfile): TrafficStats? = when (profile.protocol) {
         VpnProtocol.WIREGUARD -> runCatching { wireGuardManager.statistics() }.getOrNull()
         VpnProtocol.IKEV2 -> ikev2TrafficEstimate()
+        VpnProtocol.VLESS -> XrayVpnService.trafficStats()
         else -> null
     }
 
@@ -428,4 +501,7 @@ sealed interface VpnFailure {
     object Deactivated : VpnFailure
 
     data class Unknown(val detail: String?) : VpnFailure
+
+    /** The Xray core behind VLESS could not start; [detail] is its own error text. */
+    data class Xray(val detail: String) : VpnFailure
 }

@@ -105,6 +105,7 @@ fun VpnProfile.toJson(): JSONObject = JSONObject().apply {
     put("wireGuardDnsServers", wireGuardDnsServers)
     put("wireGuardEndpointPort", wireGuardEndpointPort ?: JSONObject.NULL)
     put("wireGuardAllowedIps", wireGuardAllowedIps)
+    put("vlessLink", vlessLink)
 }
 
 fun JSONObject.toVpnProfile(): VpnProfile = VpnProfile(
@@ -133,6 +134,8 @@ fun JSONObject.toVpnProfile(): VpnProfile = VpnProfile(
     wireGuardDnsServers = optStringOrNull("wireGuardDnsServers"),
     wireGuardEndpointPort = if (isNull("wireGuardEndpointPort")) null else getInt("wireGuardEndpointPort"),
     wireGuardAllowedIps = optStringOrNull("wireGuardAllowedIps") ?: "0.0.0.0/0, ::/0",
+    // Absent in profiles saved before VLESS existed.
+    vlessLink = optStringOrNull("vlessLink"),
 )
 
 private fun JSONObject.optStringOrNull(key: String): String? =

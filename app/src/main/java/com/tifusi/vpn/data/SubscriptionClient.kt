@@ -5,6 +5,7 @@ import android.provider.Settings
 import com.tifusi.vpn.BuildConfig
 import com.tifusi.vpn.vpn.CertificateStore
 import com.tifusi.vpn.vpn.Ikev2AuthType
+import com.tifusi.vpn.vpn.VlessLink
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProtocol
 import java.io.ByteArrayInputStream
@@ -21,7 +22,7 @@ sealed class SubscriptionError(message: String) : Exception(message) {
     object NotFound : SubscriptionError("Subscription not found")
     object DeviceLimit : SubscriptionError("Device limit reached")
     object PanelOutdated : SubscriptionError("Panel has no app.json endpoint")
-    object NoServers : SubscriptionError("No IKEv2 or L2TP servers")
+    object NoServers : SubscriptionError("No IKEv2, L2TP or VLESS servers")
     data class Network(val detail: String?) : SubscriptionError("Network: $detail")
 }
 
@@ -119,7 +120,7 @@ object SubscriptionClient {
                 else -> throw SubscriptionError.Network("HTTP $code")
             }
             val json = JSONObject(body)
-            val profiles = parse(json).ifEmpty { throw SubscriptionError.NoServers }
+            val profiles = parseProfiles(json).ifEmpty { throw SubscriptionError.NoServers }
             return SubscriptionResult(profiles, parseInfo(json))
         } catch (e: SubscriptionError) {
             throw e
@@ -130,7 +131,8 @@ object SubscriptionClient {
         }
     }
 
-    private fun parse(json: JSONObject): List<VpnProfile> {
+    /** Every usable server in app.json, IKEv2 first; empty only when no array has one. */
+    internal fun parseProfiles(json: JSONObject): List<VpnProfile> {
         val ikev2 = json.optJSONArray("ikev2").objects().map { cfg ->
             val server = cfg.getString("server")
             val psk = cfg.str("psk")
@@ -160,7 +162,19 @@ object SubscriptionClient {
                 password = cfg.str("password"),
             )
         }
-        return ikev2 + l2tp
+        // The panel lists VLESS inbounds as the same vless:// share links users paste into other
+        // apps. A link this app cannot use is skipped, so one unusual inbound never blocks the rest.
+        val vless = json.optJSONArray("vless").strings().mapNotNull { raw ->
+            val link = runCatching { VlessLink.parse(raw) }.getOrNull() ?: return@mapNotNull null
+            VpnProfile(
+                id = "${ID_PREFIX}vless:${link.address}:${link.port}:${link.remark.orEmpty()}",
+                name = link.remark ?: "${link.address}:${link.port}",
+                protocol = VpnProtocol.VLESS,
+                serverAddress = link.address,
+                vlessLink = raw.trim(),
+            )
+        }.distinctBy { it.id } // Ids key the server list; a duplicate would crash it.
+        return ikev2 + l2tp + vless
     }
 
     /**
@@ -193,6 +207,9 @@ object SubscriptionClient {
 
     private fun JSONArray?.objects(): List<JSONObject> =
         if (this == null) emptyList() else (0 until length()).map { getJSONObject(it) }
+
+    private fun JSONArray?.strings(): List<String> =
+        if (this == null) emptyList() else (0 until length()).mapNotNull { i -> optString(i).takeIf { it.isNotBlank() } }
 
     private fun JSONObject.str(key: String): String? =
         if (has(key) && !isNull(key)) optString(key).takeIf { it.isNotBlank() } else null

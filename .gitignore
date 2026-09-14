@@ -9,3 +9,5 @@ captures/
 .cxx/
 *.keystore
 *.jks
+# Xray core AAR (~62 MB): downloaded by CI and for local builds, never committed.
+app/libs/*.aar

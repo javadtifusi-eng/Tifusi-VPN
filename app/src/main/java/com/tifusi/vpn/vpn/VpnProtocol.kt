@@ -4,10 +4,13 @@ enum class VpnProtocol {
     IKEV2,
     WIREGUARD,
     L2TP,
-    PPTP;
+    PPTP,
+
+    /** VLESS (REALITY first) through the embedded Xray core, from a vless:// share link. */
+    VLESS;
 
     val supportsInAppToggle: Boolean
-        get() = this == IKEV2 || this == WIREGUARD
+        get() = this == IKEV2 || this == WIREGUARD || this == VLESS
 }
 
 enum class Ikev2AuthType {

@@ -26,6 +26,19 @@ jobs:
         with:
           gradle-version: "8.7"
 
+      # The Xray core behind VLESS (github.com/2dust/AndroidLibXrayLite). At ~62 MB it is fetched
+      # per build instead of committed; the version and checksum are pinned so an upstream re-upload
+      # can never change what ships unnoticed. Any failure here stops the build.
+      - name: Download Xray core (libv2ray.aar)
+        env:
+          LIBXRAY_VERSION: v26.9.9
+          LIBXRAY_SHA256: 9ecf4c921568d8f4cb8550d3bafe08ff6f1d1984f45a6ad183dcdf52ee9302de
+        run: |
+          mkdir -p app/libs
+          curl -fsSL --retry 3 -o app/libs/libv2ray.aar \
+            "https://github.com/2dust/AndroidLibXrayLite/releases/download/${LIBXRAY_VERSION}/libv2ray.aar"
+          echo "${LIBXRAY_SHA256}  app/libs/libv2ray.aar" | sha256sum -c -
+
       # The run number becomes versionCode/versionName and the release tag below, so the
       # About tab can tell whether a newer build exists.
       - name: Build release APK

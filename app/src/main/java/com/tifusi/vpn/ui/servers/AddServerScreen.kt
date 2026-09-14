@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -34,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -48,6 +50,8 @@ import com.tifusi.vpn.ui.theme.TifusiNeonBlue
 import com.tifusi.vpn.ui.theme.TifusiNeonGreen
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
 import com.tifusi.vpn.vpn.Ikev2AuthType
+import com.tifusi.vpn.vpn.VlessLink
+import com.tifusi.vpn.vpn.VlessLinkProblem
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProtocol
 import java.text.DateFormat
@@ -91,8 +95,11 @@ fun AddServerScreen(viewModel: AddServerViewModel, onDone: () -> Unit) {
         FormField(stringResource(R.string.field_name), draft.name) { v ->
             viewModel.update { it.copy(name = v) }
         }
-        FormField(stringResource(R.string.field_server_address), draft.serverAddress, keyboardType = KeyboardType.Uri) { v ->
-            viewModel.update { it.copy(serverAddress = v.trim()) }
+        // A VLESS server's address is part of its link.
+        if (draft.protocol != VpnProtocol.VLESS) {
+            FormField(stringResource(R.string.field_server_address), draft.serverAddress, keyboardType = KeyboardType.Uri) { v ->
+                viewModel.update { it.copy(serverAddress = v.trim()) }
+            }
         }
 
         when (draft.protocol) {
@@ -105,6 +112,7 @@ fun AddServerScreen(viewModel: AddServerViewModel, onDone: () -> Unit) {
                 }
             }
             VpnProtocol.PPTP -> CredentialsFields(draft, viewModel)
+            VpnProtocol.VLESS -> VlessSection(draft, viewModel)
         }
 
         importError?.let {
@@ -288,6 +296,43 @@ private fun CredentialsFields(draft: VpnProfile, viewModel: AddServerViewModel) 
     }
 }
 
+/**
+ * VLESS has too many transport and security combinations for a form, and every panel already
+ * issues vless:// links, so the link itself is the whole entry. It is checked as it is typed.
+ */
+@Composable
+private fun VlessSection(draft: VpnProfile, viewModel: AddServerViewModel) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+
+    Text(stringResource(R.string.vless_link_hint), style = MaterialTheme.typography.bodyMedium, color = TifusiTextSecondary)
+    // Long-press paste is unreliable on some phones, as on the subscription card.
+    OutlinedButton(
+        onClick = { clipboard.getText()?.text?.let(viewModel::setVlessLink) },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Icon(Icons.Default.ContentPaste, contentDescription = null)
+        Text(stringResource(R.string.vless_paste_link), modifier = Modifier.padding(start = 6.dp))
+    }
+    FormField(stringResource(R.string.field_vless_link), draft.vlessLink, singleLine = false, keyboardType = KeyboardType.Uri) { v ->
+        viewModel.setVlessLink(v)
+    }
+
+    val parsed = remember(draft.vlessLink) {
+        draft.vlessLink?.takeIf { it.isNotBlank() }?.let { runCatching { VlessLink.parse(it) } }
+    }
+    parsed?.getOrNull()?.let { link ->
+        Text(
+            text = "${link.security.uppercase()} · ${link.network} · ${link.address}:${link.port}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TifusiNeonGreen,
+        )
+    }
+    (parsed?.exceptionOrNull() as? VlessLinkProblem)?.let { problem ->
+        Text(problem.localized(context), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+    }
+}
+
 @Composable
 private fun WireGuardSection(draft: VpnProfile, viewModel: AddServerViewModel) {
     FormField(stringResource(R.string.field_wg_private_key), draft.wireGuardPrivateKey, secret = true) { v ->
@@ -359,6 +404,7 @@ private fun VpnProtocol.displayName(): String = when (this) {
     VpnProtocol.WIREGUARD -> "WireGuard"
     VpnProtocol.L2TP -> "L2TP"
     VpnProtocol.PPTP -> "PPTP"
+    VpnProtocol.VLESS -> "VLESS"
 }
 
 private fun Ikev2AuthType.labelRes(): Int = when (this) {

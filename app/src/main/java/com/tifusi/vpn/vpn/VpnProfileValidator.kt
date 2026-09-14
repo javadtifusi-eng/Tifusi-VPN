@@ -10,7 +10,8 @@ object VpnProfileValidator {
     fun validate(profile: VpnProfile): List<ValidationIssue> {
         val issues = mutableListOf<ValidationIssue>()
 
-        if (profile.serverAddress.isBlank()) {
+        // A VLESS server's address lives inside its link, which validateVless checks.
+        if (profile.protocol != VpnProtocol.VLESS && profile.serverAddress.isBlank()) {
             issues += ValidationIssue.MissingServerAddress
         }
 
@@ -25,6 +26,7 @@ object VpnProfileValidator {
                 if (profile.username.isNullOrBlank()) issues += ValidationIssue.MissingUsername
                 if (profile.password.isNullOrBlank()) issues += ValidationIssue.MissingPassword
             }
+            VpnProtocol.VLESS -> validateVless(profile, issues)
         }
 
         return issues
@@ -100,6 +102,24 @@ object VpnProfileValidator {
         }
     }
 
+    private fun validateVless(profile: VpnProfile, issues: MutableList<ValidationIssue>) {
+        val raw = profile.vlessLink?.takeIf { it.isNotBlank() }
+        if (raw == null) {
+            issues += ValidationIssue.MissingVlessLink
+            return
+        }
+        try {
+            val link = VlessLink.parse(raw)
+            // The bundled core rejects allowInsecure outright, so the link is used with certificate
+            // checks on; say so now rather than let a self-signed server fail mysteriously later.
+            if (link.allowInsecure && link.security == VlessLink.SECURITY_TLS) {
+                issues += ValidationIssue.VlessInsecureIgnored
+            }
+        } catch (e: VlessLinkProblem) {
+            issues += ValidationIssue.BadVlessLink(e)
+        }
+    }
+
     private fun validateWireGuard(profile: VpnProfile, issues: MutableList<ValidationIssue>) {
         if (profile.wireGuardPrivateKey.isNullOrBlank()) issues += ValidationIssue.MissingWireGuardPrivateKey
         if (profile.wireGuardPeerPublicKey.isNullOrBlank()) issues += ValidationIssue.MissingWireGuardPeerKey
@@ -118,10 +138,15 @@ sealed class ValidationIssue(val isBlocking: Boolean) {
     object MissingWireGuardPrivateKey : ValidationIssue(true)
     object MissingWireGuardPeerKey : ValidationIssue(true)
     object MissingWireGuardAddress : ValidationIssue(true)
+    object MissingVlessLink : ValidationIssue(true)
+
+    /** The link sets allowInsecure, which is ignored: the server certificate is still verified. */
+    object VlessInsecureIgnored : ValidationIssue(false)
 
     /** Connecting is still possible against a publicly issued server certificate. */
     object NoServerCaPinned : ValidationIssue(false)
 
     data class BadServerCa(val problem: CertificateProblem) : ValidationIssue(true)
     data class BadClientCertificate(val problem: CertificateProblem) : ValidationIssue(true)
+    data class BadVlessLink(val problem: VlessLinkProblem) : ValidationIssue(true)
 }

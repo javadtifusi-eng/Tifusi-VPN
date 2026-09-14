@@ -69,22 +69,31 @@ class XrayVpnService : VpnService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         latestStartId = startId
+        val saved = lastSession(this)
         // Required within seconds of startForegroundService, whatever happens next.
-        startInForeground(intent?.getStringExtra(EXTRA_NAME).orEmpty())
+        startInForeground(intent?.getStringExtra(EXTRA_NAME) ?: saved?.second.orEmpty())
 
         val link = intent?.getStringExtra(EXTRA_LINK)
         if (intent?.action != ACTION_START || link == null) {
-            // A start by the system (always-on VPN) carries no profile to connect to. It must not
-            // disturb a tunnel the user already has up; otherwise there is nothing to run.
-            worker.execute { if (tunnel == null) stopTunnel(null, startId) }
-            return START_NOT_STICKY
+            // A restart after Android killed the process (START_STICKY) or an always-on start carries
+            // no profile: reconnect to the server the user left connected, never disturbing a live tunnel.
+            if (saved != null && tunnel == null) {
+                val runId = runIds.incrementAndGet()
+                currentRunId = runId
+                publish(XrayStatus.Starting(runId))
+                worker.execute { startTunnel(runId, saved.first, startId) }
+            } else {
+                worker.execute { if (tunnel == null) stopTunnel(null, startId) }
+            }
+            return START_STICKY
         }
         val runId = intent.getLongExtra(EXTRA_RUN_ID, 0)
         worker.execute { startTunnel(runId, link, startId) }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     override fun onRevoke() {
+        clearSession(this)
         val startId = latestStartId
         worker.execute { stopTunnel(XrayStatus.Revoked(currentRunId), startId) }
     }
@@ -248,6 +257,9 @@ class XrayVpnService : VpnService() {
         private const val NOTIFICATION_ID = 1001
         private const val TUN_ADDRESS_V4 = "10.10.14.1"
         private const val TUN_ADDRESS_V6 = "fc00::10:10:14:1"
+        private const val SESSION_PREFS = "xray_session"
+        private const val SESSION_LINK = "link"
+        private const val SESSION_NAME = "name"
 
         private val worker = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "xray-tunnel").apply { isDaemon = true }
@@ -279,6 +291,10 @@ class XrayVpnService : VpnService() {
             val runId = runIds.incrementAndGet()
             currentRunId = runId
             publish(XrayStatus.Starting(runId))
+            context.getSharedPreferences(SESSION_PREFS, Context.MODE_PRIVATE).edit()
+                .putString(SESSION_LINK, profile.vlessLink)
+                .putString(SESSION_NAME, profile.name)
+                .apply()
             val intent = Intent(context, XrayVpnService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(EXTRA_LINK, profile.vlessLink)
@@ -288,8 +304,20 @@ class XrayVpnService : VpnService() {
             return runId
         }
 
+        /** The server of the last run the user started and has not stopped: link and display name. */
+        private fun lastSession(context: Context): Pair<String, String>? {
+            val prefs = context.getSharedPreferences(SESSION_PREFS, Context.MODE_PRIVATE)
+            val link = prefs.getString(SESSION_LINK, null) ?: return null
+            return link to prefs.getString(SESSION_NAME, null).orEmpty()
+        }
+
+        private fun clearSession(context: Context) {
+            context.getSharedPreferences(SESSION_PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        }
+
         /** Returns at once; the teardown finishes on the worker thread. */
-        fun stop() {
+        fun stop(context: Context) {
+            clearSession(context)
             val runId = runIds.incrementAndGet()
             currentRunId = runId
             val service = instance

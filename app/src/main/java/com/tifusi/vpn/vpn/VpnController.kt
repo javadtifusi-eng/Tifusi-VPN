@@ -65,6 +65,20 @@ class VpnController(private val context: Context) {
                 markDisconnected()
             }
         }
+        adoptRunningTunnel()
+    }
+
+    /** A controller created after the app was closed and reopened must show a tunnel that is still up. */
+    private fun adoptRunningTunnel() {
+        val xray = XrayVpnService.status.value
+        if (xray is XrayStatus.Running || xray is XrayStatus.Starting) {
+            xrayRunId = xray.runId
+            activeProtocol = VpnProtocol.VLESS
+            if (xray is XrayStatus.Running) markConnected() else markConnecting()
+        } else if (ikev2Manager?.platformState() == Ikev2PlatformState.CONNECTED) {
+            activeProtocol = VpnProtocol.IKEV2
+            markConnected()
+        }
     }
 
     /**
@@ -110,7 +124,7 @@ class VpnController(private val context: Context) {
             VpnProtocol.WIREGUARD -> runCatching { wireGuardManager.disconnect() }
             VpnProtocol.VLESS -> {
                 xrayRunId = null
-                XrayVpnService.stop()
+                XrayVpnService.stop(context)
             }
             // Nothing app-side to tear down; the tunnel lives entirely in Settings.
             VpnProtocol.L2TP, VpnProtocol.PPTP -> Unit
@@ -162,7 +176,7 @@ class VpnController(private val context: Context) {
         ) {
             val failure = when (activeProtocol) {
                 VpnProtocol.VLESS -> {
-                    XrayVpnService.stop()
+                    XrayVpnService.stop(context)
                     xrayRunId = null
                     VpnFailure.Xray("Core did not come up within ${CONNECT_TIMEOUT_MS / 1000} s")
                 }

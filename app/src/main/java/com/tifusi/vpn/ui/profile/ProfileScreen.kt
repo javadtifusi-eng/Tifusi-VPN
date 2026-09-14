@@ -5,12 +5,14 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -25,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
@@ -86,7 +89,12 @@ fun ProfileScreen() {
                 modifier = Modifier.padding(top = 16.dp),
             )
             OutlinedButton(onClick = { openTelegram(context, username) }, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.contact_telegram, "@$username"))
+                Image(
+                    painter = painterResource(R.drawable.ic_telegram),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                )
+                Text(stringResource(R.string.contact_telegram), modifier = Modifier.padding(start = 8.dp))
             }
         }
     }

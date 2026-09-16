@@ -43,6 +43,13 @@ jobs:
             "https://github.com/2dust/AndroidLibXrayLite/releases/download/${LIBXRAY_VERSION}/libv2ray.aar"
           echo "${LIBXRAY_SHA256}  app/libs/libv2ray.aar" | sha256sum -c -
 
+      # The tag stays v<run number>: installed apps parse it as a number to detect updates. Only
+      # the release title shows the user-facing 1.N version.
+      - name: Version name
+        run: |
+          base=$(grep '^tifusi.versionBase=' gradle.properties | cut -d= -f2)
+          echo "VERSION_NAME=1.$(( ${{ github.run_number }} - base ))" >> "$GITHUB_ENV"
+
       # The run number becomes versionCode/versionName and the release tag below, so the
       # About tab can tell whether a newer build exists.
       - name: Build release APK
@@ -81,11 +88,21 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
-          name: Tifusi VPN v${{ github.run_number }}
+          name: Tifusi VPN ${{ env.VERSION_NAME }}
           files: |
             tifusi-vpn.apk
             tifusi-vpn-arm64.apk
             tifusi-vpn-armv7.apk
+
+      # Only the newest build stays on the Releases page. The updater and the download links only use
+      # releases/latest, and a build that fails the smoke test never reaches this step.
+      - name: Delete older releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName' \
+            | grep -vx "v${{ github.run_number }}" \
+            | xargs -r -n1 gh release delete --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
 
   # The Windows app ships in the same release as the APK (same v<run number> tag and version
   # number), after the Android job has created that release.
@@ -107,9 +124,15 @@ jobs:
         shell: pwsh
         run: Move-Item publish/TifusiVPN.exe TifusiVPN.exe
 
+      - name: Version name
+        shell: bash
+        run: |
+          base=$(grep '^tifusi.versionBase=' gradle.properties | cut -d= -f2 | tr -d '\r')
+          echo "VERSION_NAME=1.$(( ${{ github.run_number }} - base ))" >> "$GITHUB_ENV"
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
-          name: Tifusi VPN v${{ github.run_number }}
+          name: Tifusi VPN ${{ env.VERSION_NAME }}
           files: TifusiVPN.exe

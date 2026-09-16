@@ -2,4 +2,6 @@
 <resources>
     <color name="tifusi_background">#0A0F24</color>
     <color name="tifusi_surface">#101B3D</color>
+    <!-- Matches the logo artwork's black exactly, so the foreground layer has no visible edge. -->
+    <color name="tifusi_icon_background">#000000</color>
 </resources>

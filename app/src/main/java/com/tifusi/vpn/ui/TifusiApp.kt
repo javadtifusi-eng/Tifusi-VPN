@@ -86,7 +86,7 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                         Image(
                             painter = painterResource(R.drawable.ic_logo_mark),
                             contentDescription = null,
-                            modifier = Modifier.size(30.dp),
+                            modifier = Modifier.size(width = 56.dp, height = 30.dp),
                         )
                         Text(
                             text = stringResource(R.string.app_name),

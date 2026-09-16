@@ -20,7 +20,11 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # The default package list includes the legacy `tools` package, which Google stopped serving
+      # on 2026-09-15 (android-actions/setup-android#537); the build only needs platform-tools.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - uses: gradle/actions/setup-gradle@v4
         with:

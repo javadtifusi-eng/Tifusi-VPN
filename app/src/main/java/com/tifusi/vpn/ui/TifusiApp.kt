@@ -24,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -84,14 +83,10 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // The launcher layer keeps the mark inside the adaptive-icon safe zone, so it is
-                        // scaled up here; the margin around it is transparent.
                         Image(
-                            painter = painterResource(R.drawable.ic_launcher_foreground),
+                            painter = painterResource(R.drawable.ic_logo_mark),
                             contentDescription = null,
-                            modifier = Modifier
-                                .size(32.dp)
-                                .graphicsLayer(scaleX = 2.2f, scaleY = 2.2f),
+                            modifier = Modifier.size(30.dp),
                         )
                         Text(
                             text = stringResource(R.string.app_name),

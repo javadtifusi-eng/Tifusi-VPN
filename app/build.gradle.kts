@@ -23,10 +23,17 @@ android {
         buildConfigField("String", "SUPPORT_TELEGRAM", "\"${providers.gradleProperty("tifusi.supportTelegram").getOrElse("")}\"")
         buildConfigField("String", "UPDATE_REPO", "\"${providers.gradleProperty("tifusi.updateRepo").getOrElse("")}\"")
 
-        // Phones only: dropping the emulator (x86) native libraries of WireGuard and ML Kit
-        // roughly halves the APK. armeabi-v7a keeps older 32-bit Samsung models working.
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+    }
+
+    // One APK per ABI (~half the download), plus the universal APK that the in-app updater and the
+    // releases/latest/download/tifusi-vpn.apk link serve, so 32-bit phones keep updating.
+    // ndk.abiFilters cannot be combined with ABI splits, so x86 is dropped in packaging instead.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
         }
     }
 
@@ -41,6 +48,9 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            // Phones only: the emulator (x86) libraries of WireGuard and ML Kit would otherwise land
+            // in the universal APK.
+            excludes += listOf("**/x86/*.so", "**/x86_64/*.so")
         }
     }
 

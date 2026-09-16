@@ -44,17 +44,44 @@ jobs:
       - name: Build release APK
         run: gradle assembleRelease -Ptifusi.buildNumber=${{ github.run_number }}
 
-      # The asset name has to stay constant, otherwise the
-      # releases/latest/download/tifusi-vpn.apk link breaks on every build.
-      - name: Name the APK
-        run: mv app/build/outputs/apk/release/*.apk tifusi-vpn.apk
+      # The asset names have to stay constant, otherwise the releases/latest/download links break
+      # on every build. tifusi-vpn.apk stays the universal APK: the in-app updater downloads it.
+      - name: Name the APKs
+        run: |
+          out=app/build/outputs/apk/release
+          mv "$out/app-universal-release.apk" tifusi-vpn.apk
+          mv "$out/app-arm64-v8a-release.apk" tifusi-vpn-arm64.apk
+          mv "$out/app-armeabi-v7a-release.apk" tifusi-vpn-armv7.apk
+          ls -la tifusi-vpn*.apk
+
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Nothing is published unless the app survives being opened. The x86_64 image runs the ARM
+      # libraries through the emulator's ARM translation.
+      - name: Smoke test on emulator
+        timeout-minutes: 25
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: bash .github/scripts/smoke-test.sh tifusi-vpn.apk
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
           name: Tifusi VPN v${{ github.run_number }}
-          files: tifusi-vpn.apk
+          files: |
+            tifusi-vpn.apk
+            tifusi-vpn-arm64.apk
+            tifusi-vpn-armv7.apk
 
   # The Windows app ships in the same release as the APK (same v<run number> tag and version
   # number), after the Android job has created that release.

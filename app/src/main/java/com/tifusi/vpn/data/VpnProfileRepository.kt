@@ -75,7 +75,11 @@ class VpnProfileRepository(private val context: Context) {
 
     private fun decodeProfiles(raw: String): List<VpnProfile> {
         val array = JSONArray(raw)
-        return (0 until array.length()).map { i -> array.getJSONObject(i).toVpnProfile() }
+        // A profile saved by an older build can name a protocol this one no longer has (WireGuard
+        // was dropped). Such an entry is skipped instead of failing the whole list.
+        return (0 until array.length()).mapNotNull { i ->
+            runCatching { array.getJSONObject(i).toVpnProfile() }.getOrNull()
+        }
     }
 }
 
@@ -98,13 +102,6 @@ fun VpnProfile.toJson(): JSONObject = JSONObject().apply {
     put("username", username)
     put("password", password)
     put("l2tpIpsecPresharedKey", l2tpIpsecPresharedKey)
-    put("wireGuardPrivateKey", wireGuardPrivateKey)
-    put("wireGuardPeerPublicKey", wireGuardPeerPublicKey)
-    put("wireGuardPresharedKey", wireGuardPresharedKey)
-    put("wireGuardAddress", wireGuardAddress)
-    put("wireGuardDnsServers", wireGuardDnsServers)
-    put("wireGuardEndpointPort", wireGuardEndpointPort ?: JSONObject.NULL)
-    put("wireGuardAllowedIps", wireGuardAllowedIps)
     put("vlessLink", vlessLink)
 }
 
@@ -127,13 +124,6 @@ fun JSONObject.toVpnProfile(): VpnProfile = VpnProfile(
     username = optStringOrNull("username"),
     password = optStringOrNull("password"),
     l2tpIpsecPresharedKey = optStringOrNull("l2tpIpsecPresharedKey"),
-    wireGuardPrivateKey = optStringOrNull("wireGuardPrivateKey"),
-    wireGuardPeerPublicKey = optStringOrNull("wireGuardPeerPublicKey"),
-    wireGuardPresharedKey = optStringOrNull("wireGuardPresharedKey"),
-    wireGuardAddress = optStringOrNull("wireGuardAddress"),
-    wireGuardDnsServers = optStringOrNull("wireGuardDnsServers"),
-    wireGuardEndpointPort = if (isNull("wireGuardEndpointPort")) null else getInt("wireGuardEndpointPort"),
-    wireGuardAllowedIps = optStringOrNull("wireGuardAllowedIps") ?: "0.0.0.0/0, ::/0",
     // Absent in profiles saved before VLESS existed.
     vlessLink = optStringOrNull("vlessLink"),
 )

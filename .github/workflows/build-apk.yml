@@ -44,17 +44,26 @@ jobs:
       - name: Build release APK
         run: gradle assembleRelease -Ptifusi.buildNumber=${{ github.run_number }}
 
-      # The asset name has to stay constant, otherwise the
-      # releases/latest/download/tifusi-vpn.apk link breaks on every build.
-      - name: Name the APK
-        run: mv app/build/outputs/apk/release/*.apk tifusi-vpn.apk
+      # tifusi-vpn.apk stays the universal build under a constant name, otherwise the
+      # releases/latest/download/tifusi-vpn.apk link breaks on every build. The per-ABI builds
+      # ship beside it at about half the size; the in-app updater picks the one matching the phone.
+      - name: Name the APKs
+        run: |
+          out=app/build/outputs/apk/release
+          mv "$out/app-universal-release.apk" tifusi-vpn.apk
+          mv "$out/app-arm64-v8a-release.apk" tifusi-vpn-arm64-v8a.apk
+          mv "$out/app-armeabi-v7a-release.apk" tifusi-vpn-armeabi-v7a.apk
+          ls -lh tifusi-vpn*.apk
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
           name: Tifusi VPN v${{ github.run_number }}
-          files: tifusi-vpn.apk
+          files: |
+            tifusi-vpn.apk
+            tifusi-vpn-arm64-v8a.apk
+            tifusi-vpn-armeabi-v7a.apk
 
   # The Windows app ships in the same release as the APK (same v<run number> tag and version
   # number), after the Android job has created that release.

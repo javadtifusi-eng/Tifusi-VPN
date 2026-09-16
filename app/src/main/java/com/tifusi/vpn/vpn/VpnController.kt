@@ -16,15 +16,14 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Single entry point the UI uses to bring a tunnel up or down, regardless of protocol. Hides the
- * fact that IKEv2 goes through the platform VpnManager, WireGuard through its own backend, VLESS
- * through the embedded Xray core in [XrayVpnService], and L2TP/PPTP can only be handed off to Settings.
+ * fact that IKEv2 goes through the platform VpnManager, VLESS through the embedded Xray core in
+ * [XrayVpnService], and L2TP/PPTP can only be handed off to Settings.
  *
- * [connect] and [disconnect] may block (the WireGuard backend waits for its service), so callers
- * must invoke them off the main thread.
+ * [connect] and [disconnect] may block (provisioning is I/O), so callers must invoke them off the
+ * main thread.
  */
 class VpnController(private val context: Context) {
 
-    private val wireGuardManager by lazy { WireGuardVpnManager(context) }
     private val ikev2Manager: Ikev2VpnManager? =
         if (Ikev2VpnManager.isSupported()) Ikev2VpnManager(context) else null
 
@@ -94,15 +93,12 @@ class VpnController(private val context: Context) {
 
         // Only these are tunnels the app runs itself and so can see the outcome of. Re-invoked after
         // the consent dialog, this restarts the clock, so the duration excludes the dialog.
-        if (profile.protocol == VpnProtocol.IKEV2 || profile.protocol == VpnProtocol.WIREGUARD ||
-            profile.protocol == VpnProtocol.VLESS
-        ) {
+        if (profile.protocol == VpnProtocol.IKEV2 || profile.protocol == VpnProtocol.VLESS) {
             beginAttempt(profile.protocol)
         }
 
         return when (profile.protocol) {
             VpnProtocol.IKEV2 -> connectIkev2(profile)
-            VpnProtocol.WIREGUARD -> connectWireGuard(profile)
             VpnProtocol.VLESS -> connectVless(profile)
             VpnProtocol.L2TP, VpnProtocol.PPTP -> {
                 _state.value = VpnConnectionState.RequiresSystemSettings(profile)
@@ -121,7 +117,6 @@ class VpnController(private val context: Context) {
         }
         when (profile.protocol) {
             VpnProtocol.IKEV2 -> ikev2Manager?.disconnect()
-            VpnProtocol.WIREGUARD -> runCatching { wireGuardManager.disconnect() }
             VpnProtocol.VLESS -> {
                 xrayRunId = null
                 XrayVpnService.stop(context)
@@ -253,24 +248,9 @@ class VpnController(private val context: Context) {
         }
     }
 
-    private fun connectWireGuard(profile: VpnProfile): Intent? {
-        // WireGuard runs as this app's own VpnService, which has a consent gate separate from
-        // the platform IKEv2 one.
-        VpnService.prepare(context)?.let { return it }
-
-        activeProtocol = VpnProtocol.WIREGUARD
-        markConnecting()
-        try {
-            wireGuardManager.connect(profile)
-            markConnected()
-        } catch (e: Exception) {
-            fail(VpnFailure.Unknown(e.message))
-        }
-        return null
-    }
-
     private fun connectVless(profile: VpnProfile): Intent? {
-        // XrayVpnService is this app's own VpnService, so it has the same consent gate as WireGuard.
+        // XrayVpnService is this app's own VpnService, which has a consent gate separate from the
+        // platform IKEv2 one.
         VpnService.prepare(context)?.let { return it }
 
         activeProtocol = VpnProtocol.VLESS
@@ -449,7 +429,6 @@ class VpnController(private val context: Context) {
     }
 
     fun trafficStats(profile: VpnProfile): TrafficStats? = when (profile.protocol) {
-        VpnProtocol.WIREGUARD -> runCatching { wireGuardManager.statistics() }.getOrNull()
         VpnProtocol.IKEV2 -> ikev2TrafficEstimate()
         VpnProtocol.VLESS -> XrayVpnService.trafficStats()
         else -> null

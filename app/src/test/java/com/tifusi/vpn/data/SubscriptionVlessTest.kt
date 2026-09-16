@@ -6,6 +6,7 @@ import com.tifusi.vpn.vpn.VpnProtocol
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -58,7 +59,8 @@ class SubscriptionVlessTest {
         )
         assertEquals(profile, profile.toJson().toVpnProfile())
 
-        // A profile saved by a version without VLESS support.
+        // A profile saved by a version without VLESS support, still carrying the WireGuard keys
+        // that build wrote. Both the missing and the obsolete keys have to be tolerated.
         val old = JSONObject()
             .put("id", "sub:ikev2:1.2.3.4")
             .put("name", "Old")
@@ -66,5 +68,17 @@ class SubscriptionVlessTest {
             .put("serverAddress", "1.2.3.4")
             .put("wireGuardEndpointPort", JSONObject.NULL)
         assertNull(old.toVpnProfile().vlessLink)
+    }
+
+    @Test
+    fun profileOfARemovedProtocolIsRejected() {
+        // WireGuard is gone; the repository drops profiles that fail to decode rather than losing
+        // the whole list.
+        val wireGuard = JSONObject()
+            .put("id", "wg-1")
+            .put("name", "Old WireGuard")
+            .put("protocol", "WIREGUARD")
+            .put("serverAddress", "1.2.3.4")
+        assertThrows(IllegalArgumentException::class.java) { wireGuard.toVpnProfile() }
     }
 }

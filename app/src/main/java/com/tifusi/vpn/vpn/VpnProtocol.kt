@@ -2,7 +2,6 @@ package com.tifusi.vpn.vpn
 
 enum class VpnProtocol {
     IKEV2,
-    WIREGUARD,
     L2TP,
     PPTP,
 
@@ -10,7 +9,7 @@ enum class VpnProtocol {
     VLESS;
 
     val supportsInAppToggle: Boolean
-        get() = this == IKEV2 || this == WIREGUARD || this == VLESS
+        get() = this == IKEV2 || this == VLESS
 }
 
 enum class Ikev2AuthType {

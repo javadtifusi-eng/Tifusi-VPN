@@ -18,8 +18,6 @@
     <string name="protocol_l2tp_tagline">Reliable and secure</string>
     <string name="protocol_pptp">PPTP</string>
     <string name="protocol_pptp_tagline">Fast and lightweight</string>
-    <string name="protocol_wireguard">WireGuard</string>
-    <string name="protocol_wireguard_tagline">Modern and powerful</string>
     <string name="protocol_vless">VLESS</string>
     <string name="protocol_vless_tagline">Reality, fast and hard to block</string>
 
@@ -58,15 +56,6 @@
     <string name="cert_issued_to">Issued to: %1$s</string>
     <string name="cert_ok">Certificate is valid</string>
 
-    <!-- WireGuard fields -->
-    <string name="field_wg_private_key">Private Key</string>
-    <string name="field_wg_peer_public_key">Peer Public Key</string>
-    <string name="field_wg_preshared_key">Pre-shared Key (optional)</string>
-    <string name="field_wg_address">Address</string>
-    <string name="field_wg_dns">DNS Servers</string>
-    <string name="field_wg_port">Port</string>
-    <string name="field_wg_allowed_ips">Allowed IPs</string>
-
     <!-- VLESS -->
     <string name="field_vless_link">vless:// link</string>
     <string name="vless_link_hint">Paste the vless:// link from your panel. The server, keys and transport are all read from it.</string>
@@ -81,9 +70,6 @@
     <string name="error_missing_client_certificate">Client certificate and private key are required</string>
     <string name="error_missing_server_ca">Server CA certificate is required for certificate authentication</string>
     <string name="error_no_server_ca_pinned">No server CA pinned. This only works if the server uses a publicly trusted certificate.</string>
-    <string name="error_missing_wg_private_key">WireGuard private key is required</string>
-    <string name="error_missing_wg_peer_key">Peer public key is required</string>
-    <string name="error_missing_wg_address">Interface address is required</string>
     <string name="error_missing_vless_link">Paste a vless:// link</string>
     <string name="error_vless_insecure_ignored">This link asks to skip certificate checks (allowInsecure). The app always checks the server certificate, so a server with a self-signed certificate will not connect.</string>
     <string name="vless_error_not_vless">This is not a vless:// link</string>
@@ -183,7 +169,7 @@
 
     <!-- Services -->
     <string name="android_version">Android %1$s (API %2$d)</string>
-    <string name="wireguard_supported">WireGuard: automatic connect</string>
+    <string name="vless_supported">VLESS (Reality): automatic connect</string>
     <string name="legacy_supported">L2TP / PPTP: through Android Settings</string>
 
     <!-- Misc -->

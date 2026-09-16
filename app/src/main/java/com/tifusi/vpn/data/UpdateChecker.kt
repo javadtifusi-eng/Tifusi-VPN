@@ -1,8 +1,10 @@
 package com.tifusi.vpn.data
 
+import android.os.Build
 import com.tifusi.vpn.BuildConfig
 import java.net.HttpURLConnection
 import java.net.URL
+import org.json.JSONArray
 import org.json.JSONObject
 
 /** The newest published build and the fixed URL its APK downloads from. */
@@ -31,7 +33,9 @@ object UpdateChecker {
             if (connection.responseCode != HttpURLConnection.HTTP_OK) return null
             val json = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
             val number = json.getString("tag_name").removePrefix("v").toIntOrNull() ?: return null
-            LatestRelease(number, "https://github.com/$repo/releases/latest/download/$APK_NAME")
+            val url = abiApkUrl(json.optJSONArray("assets"))
+                ?: "https://github.com/$repo/releases/latest/download/$APK_NAME"
+            LatestRelease(number, url)
         } finally {
             connection.disconnect()
         }
@@ -39,8 +43,24 @@ object UpdateChecker {
 
     val isEnabled: Boolean get() = BuildConfig.UPDATE_REPO.isNotBlank()
 
+    /**
+     * The release's APK for this phone's architecture, about half the size of the universal one.
+     * Only a name the release actually carries is returned, so a build published without the
+     * per-ABI files falls back to the universal APK instead of a dead link.
+     */
+    private fun abiApkUrl(assets: JSONArray?): String? {
+        if (assets == null) return null
+        val byName = (0 until assets.length())
+            .mapNotNull { assets.optJSONObject(it) }
+            .associateBy({ it.optString("name") }, { it.optString("browser_download_url") })
+        // In preference order: a 64-bit phone lists arm64-v8a first and armeabi-v7a after it.
+        return Build.SUPPORTED_ABIS.firstNotNullOfOrNull { abi ->
+            byName["tifusi-vpn-$abi.apk"]?.takeIf { it.isNotBlank() }
+        }
+    }
+
     private const val TIMEOUT_MS = 15_000
 
-    // Must match the asset name in .github/workflows/build-apk.yml.
+    // Must match the asset names in .github/workflows/build-apk.yml.
     private const val APK_NAME = "tifusi-vpn.apk"
 }

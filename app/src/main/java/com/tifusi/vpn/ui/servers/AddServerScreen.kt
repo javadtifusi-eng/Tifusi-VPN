@@ -104,7 +104,6 @@ fun AddServerScreen(viewModel: AddServerViewModel, onDone: () -> Unit) {
 
         when (draft.protocol) {
             VpnProtocol.IKEV2 -> Ikev2Section(draft, viewModel)
-            VpnProtocol.WIREGUARD -> WireGuardSection(draft, viewModel)
             VpnProtocol.L2TP -> {
                 CredentialsFields(draft, viewModel)
                 FormField(stringResource(R.string.field_ipsec_preshared_key), draft.l2tpIpsecPresharedKey, secret = true) { v ->
@@ -334,35 +333,6 @@ private fun VlessSection(draft: VpnProfile, viewModel: AddServerViewModel) {
 }
 
 @Composable
-private fun WireGuardSection(draft: VpnProfile, viewModel: AddServerViewModel) {
-    FormField(stringResource(R.string.field_wg_private_key), draft.wireGuardPrivateKey, secret = true) { v ->
-        viewModel.update { it.copy(wireGuardPrivateKey = v.trim()) }
-    }
-    FormField(stringResource(R.string.field_wg_peer_public_key), draft.wireGuardPeerPublicKey) { v ->
-        viewModel.update { it.copy(wireGuardPeerPublicKey = v.trim()) }
-    }
-    FormField(stringResource(R.string.field_wg_preshared_key), draft.wireGuardPresharedKey, secret = true) { v ->
-        viewModel.update { it.copy(wireGuardPresharedKey = v.trim()) }
-    }
-    FormField(stringResource(R.string.field_wg_address), draft.wireGuardAddress) { v ->
-        viewModel.update { it.copy(wireGuardAddress = v) }
-    }
-    FormField(stringResource(R.string.field_wg_dns), draft.wireGuardDnsServers) { v ->
-        viewModel.update { it.copy(wireGuardDnsServers = v) }
-    }
-    FormField(
-        stringResource(R.string.field_wg_port),
-        draft.wireGuardEndpointPort?.toString(),
-        keyboardType = KeyboardType.Number,
-    ) { v ->
-        viewModel.update { it.copy(wireGuardEndpointPort = v.filter(Char::isDigit).toIntOrNull()) }
-    }
-    FormField(stringResource(R.string.field_wg_allowed_ips), draft.wireGuardAllowedIps) { v ->
-        viewModel.update { it.copy(wireGuardAllowedIps = v) }
-    }
-}
-
-@Composable
 private fun FormField(
     label: String,
     value: String?,
@@ -401,7 +371,6 @@ private fun FormField(
 
 private fun VpnProtocol.displayName(): String = when (this) {
     VpnProtocol.IKEV2 -> "IKEv2"
-    VpnProtocol.WIREGUARD -> "WireGuard"
     VpnProtocol.L2TP -> "L2TP"
     VpnProtocol.PPTP -> "PPTP"
     VpnProtocol.VLESS -> "VLESS"

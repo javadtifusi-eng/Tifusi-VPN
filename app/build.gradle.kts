@@ -23,10 +23,27 @@ android {
         buildConfigField("String", "SUPPORT_TELEGRAM", "\"${providers.gradleProperty("tifusi.supportTelegram").getOrElse("")}\"")
         buildConfigField("String", "UPDATE_REPO", "\"${providers.gradleProperty("tifusi.updateRepo").getOrElse("")}\"")
 
-        // Phones only: dropping the emulator (x86) native libraries of WireGuard and ML Kit
+        // Phones only: dropping the emulator (x86) native libraries of the Xray core and ML Kit
         // roughly halves the APK. armeabi-v7a keeps older 32-bit Samsung models working.
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+
+        // The UI ships in these two languages only (see res/xml/locales_config.xml). Without this,
+        // every AppCompat and Material string is carried in ~80 more.
+        resourceConfigurations += listOf("en", "fa")
+    }
+
+    // One APK per phone architecture next to the universal one. The universal build stays the
+    // published tifusi-vpn.apk so a wrong pick can never leave someone unable to install; the
+    // per-ABI files are about half its size and are what the in-app updater picks when the
+    // release carries one for this phone.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
         }
     }
 
@@ -74,7 +91,16 @@ android {
             // install over earlier debug releases. Play Protect scans debuggable APKs from outside
             // the store much longer, which stalled in-app updates.
             signingConfig = signingConfigs.getByName("debug")
-            isMinifyEnabled = false
+            // R8 drops the code nothing reaches — most of it the unused half of Compose and the
+            // ~1000 icons of material-icons-extended — and shrinkResources then drops the
+            // resources that code referenced. proguard-rules.pro keeps the parts the Xray core
+            // reaches through JNI, which R8 cannot see.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 
@@ -107,9 +133,6 @@ dependencies {
 
     // Local persistence for saved VPN profiles
     implementation("androidx.datastore:datastore-preferences:1.1.1")
-
-    // WireGuard official Android backend (VpnService based tunnel)
-    implementation("com.wireguard.android:tunnel:1.0.20230706")
 
     // Xray core for VLESS/REALITY (2dust/AndroidLibXrayLite v26.9.9). Not in git: CI downloads it into
     // app/libs before building; for a local build, fetch the same release asset there first.

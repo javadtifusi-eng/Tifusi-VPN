@@ -11,15 +11,9 @@ import com.tifusi.vpn.vpn.VpnProtocol
 import java.io.ByteArrayInputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLDecoder
 import java.net.URLEncoder
-import java.security.MessageDigest
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
-import java.util.Base64
-import javax.crypto.Cipher
-import javax.crypto.spec.GCMParameterSpec
-import javax.crypto.spec.SecretKeySpec
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -126,9 +120,7 @@ object SubscriptionClient {
                 else -> throw SubscriptionError.Network("HTTP $code")
             }
             val json = JSONObject(body)
-            // The secret or code the request was made with; a locked subscription is sealed with it.
-            val credential = URLDecoder.decode(normalized.substringAfterLast('/'), "UTF-8")
-            val profiles = parseProfiles(json, credential).ifEmpty { throw SubscriptionError.NoServers }
+            val profiles = parseProfiles(json).ifEmpty { throw SubscriptionError.NoServers }
             return SubscriptionResult(profiles, parseInfo(json))
         } catch (e: SubscriptionError) {
             throw e
@@ -140,7 +132,7 @@ object SubscriptionClient {
     }
 
     /** Every usable server in app.json, IKEv2 first; empty only when no array has one. */
-    internal fun parseProfiles(json: JSONObject, credential: String? = null): List<VpnProfile> {
+    internal fun parseProfiles(json: JSONObject): List<VpnProfile> {
         val ikev2 = json.optJSONArray("ikev2").objects().map { cfg ->
             val server = cfg.getString("server")
             val psk = cfg.str("psk")
@@ -172,39 +164,17 @@ object SubscriptionClient {
         }
         // The panel lists VLESS inbounds as the same vless:// share links users paste into other
         // apps. A link this app cannot use is skipped, so one unusual inbound never blocks the rest.
-        val vless = vlessProfiles(json.optJSONArray("vless").strings(), locked = false)
-        // Config lock: the panel sends the links sealed instead (backend/app/subscription/lock.py).
-        val sealed = json.str("sealed")?.let { blob ->
-            val opened = credential?.let { runCatching { unseal(blob, it) }.getOrNull() }
-            vlessProfiles(opened?.optJSONArray("vless").strings(), locked = true)
-        }.orEmpty()
-        return ikev2 + l2tp + (vless + sealed).distinctBy { it.id } // Ids key the server list; a duplicate would crash it.
-    }
-
-    // A link this app cannot use is skipped, so one unusual inbound never blocks the rest.
-    private fun vlessProfiles(links: List<String>, locked: Boolean): List<VpnProfile> = links.mapNotNull { raw ->
-        val link = runCatching { VlessLink.parse(raw) }.getOrNull() ?: return@mapNotNull null
-        VpnProfile(
-            id = "${ID_PREFIX}vless:${link.address}:${link.port}:${link.remark.orEmpty()}",
-            name = link.remark ?: if (locked) "VLESS" else "${link.address}:${link.port}",
-            protocol = VpnProtocol.VLESS,
-            serverAddress = if (locked) "" else link.address,
-            vlessLink = raw.trim(),
-            locked = locked,
-        )
-    }
-
-    /**
-     * Opens a locked subscription's `sealed` blob: base64(nonce(12) || ciphertext || tag(16)),
-     * AES-256-GCM with the key SHA-256("tifusi-config-lock/v1:" + credential), where credential
-     * is the subscription secret or app code the request was made with.
-     */
-    internal fun unseal(blob: String, credential: String): JSONObject {
-        val raw = Base64.getDecoder().decode(blob)
-        val key = MessageDigest.getInstance("SHA-256").digest("tifusi-config-lock/v1:$credential".toByteArray())
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, raw, 0, 12))
-        return JSONObject(String(cipher.doFinal(raw, 12, raw.size - 12), Charsets.UTF_8))
+        val vless = json.optJSONArray("vless").strings().mapNotNull { raw ->
+            val link = runCatching { VlessLink.parse(raw) }.getOrNull() ?: return@mapNotNull null
+            VpnProfile(
+                id = "${ID_PREFIX}vless:${link.address}:${link.port}:${link.remark.orEmpty()}",
+                name = link.remark ?: "${link.address}:${link.port}",
+                protocol = VpnProtocol.VLESS,
+                serverAddress = link.address,
+                vlessLink = raw.trim(),
+            )
+        }.distinctBy { it.id } // Ids key the server list; a duplicate would crash it.
+        return ikev2 + l2tp + vless
     }
 
     /**

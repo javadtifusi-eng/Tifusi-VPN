@@ -42,8 +42,4 @@ data class VpnProfile(
     // VLESS: the raw vless:// share link, parsed by VlessLink on each connect. [serverAddress] only
     // mirrors its host for display.
     val vlessLink: String? = null,
-
-    // Config lock (set by the panel): the server's details came sealed and are never shown or
-    // editable; the list shows only its name. [serverAddress] is left empty for these.
-    val locked: Boolean = false,
 )

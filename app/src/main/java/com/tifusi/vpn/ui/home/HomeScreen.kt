@@ -58,7 +58,7 @@ fun HomeScreen(
             },
             durationLabel = formatDuration(state.connectedSeconds),
             serverName = state.selectedProfile?.countryName ?: state.selectedProfile?.name,
-            serverLocation = state.selectedProfile?.takeUnless { it.locked }?.serverAddress,
+            serverLocation = state.selectedProfile?.serverAddress,
             flagEmoji = state.selectedProfile?.countryFlagEmoji,
             downloadLabel = if (isConnected) formatSpeed(state.downloadBytesPerSec) else "—",
             uploadLabel = if (isConnected) formatSpeed(state.uploadBytesPerSec) else "—",

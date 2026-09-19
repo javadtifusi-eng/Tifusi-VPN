@@ -91,14 +91,6 @@ fun ServersScreen(
             )
         }
 
-        if (profiles.any { it.locked }) {
-            Text(
-                text = stringResource(R.string.servers_locked_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = TifusiTextSecondary,
-            )
-        }
-
         LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -264,16 +256,13 @@ private fun ServerRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(profile.name.ifBlank { profile.serverAddress }, style = MaterialTheme.typography.titleMedium)
             Text(
-                text = if (profile.locked) "🔒 ${profile.protocol.name}" else "${profile.protocol.name} · ${profile.serverAddress}",
+                text = "${profile.protocol.name} · ${profile.serverAddress}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TifusiTextSecondary,
             )
         }
-        // A locked server's details are the panel's, not the user's to see or change.
-        if (!profile.locked) {
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.action_edit), tint = TifusiTextSecondary)
-            }
+        IconButton(onClick = onEdit) {
+            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.action_edit), tint = TifusiTextSecondary)
         }
         IconButton(onClick = onDelete) {
             Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = TifusiTextSecondary)

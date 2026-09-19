@@ -67,4 +67,31 @@ class SubscriptionVlessTest {
             .put("wireGuardEndpointPort", JSONObject.NULL)
         assertNull(old.toVpnProfile().vlessLink)
     }
+
+    @Test
+    fun opensALockedSubscriptionAndHidesItsDetails() {
+        // Sealed by the panel's backend/app/subscription/lock.py with the app code below.
+        val json = JSONObject()
+            .put("vless", org.json.JSONArray())
+            .put("locked", true)
+            .put("sealed", SEALED)
+
+        val profiles = SubscriptionClient.parseProfiles(json, "javad7KQ4MP9X")
+
+        val profile = profiles.single()
+        assertTrue(profile.locked)
+        assertEquals("Reality", profile.name)
+        assertEquals("", profile.serverAddress)
+        assertEquals(VlessLinkTest.REALITY_LINK, profile.vlessLink)
+    }
+
+    @Test
+    fun aWrongCredentialOpensNothing() {
+        val json = JSONObject().put("vless", org.json.JSONArray()).put("sealed", SEALED)
+        assertTrue(SubscriptionClient.parseProfiles(json, "someone-else").isEmpty())
+    }
+
+    private companion object {
+        const val SEALED = "0s8uiqkqC78hjnEj4zNOOz3lDCLZkvD/ckVmXdt8K65TPGAeb2xxAdr6pS5G6/eO3JEzsb8clJcaG27Su9uPQFhucOEm0EaR8ti51s4kQ+EQbV7UgF+ALKIGdHbFMO4DR2ATKVFvdE5Ka2kjRcMBROGJlWz7Gb9hO1sjZ7/vJ6xELU64TD+BnqzrJVJkzTBJ1rpQ+kbaS4nmzqyXpS0pRz1SyoIjC6muFAMtjb+PN9jXK0supv/ptO+gSttHN+KKMY/NhVPwpZ/XDNO4G9AQiD7TTv9nukplKj3TZzdx6rY/yc+pJ7ts/ZyNtTsadv6ec5uSVp4OdxMPvvp8BDIYiUk+xwPf"
+    }
 }

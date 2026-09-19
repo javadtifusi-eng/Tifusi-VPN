@@ -144,6 +144,7 @@
     <string name="qr_point_camera">دوربین را روی یکی از بارکدهای صفحه‌ی اشتراک بگیرید. سرورها، گواهی و اطلاعات اکانت همه از پنل می‌آیند.</string>
     <string name="qr_unrecognized">این بارکد مربوط به اشتراک Tifusi نیست. یکی از بارکدهای صفحه‌ی اشتراک را اسکن کنید.</string>
     <string name="subscription_title">شناسه یا لینک اشتراک</string>
+    <string name="servers_locked_note">🔒 جزئیات سرورها توسط مدیر قفل شده؛ دیدن، ویرایش و کپی آن‌ها ممکن نیست.</string>
     <string name="subscription_hint">مثلاً javad7KQ4MP9X</string>
     <string name="subscription_paste">چسباندن</string>
     <string name="subscription_add">دریافت سرورها</string>

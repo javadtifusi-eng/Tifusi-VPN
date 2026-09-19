@@ -144,6 +144,7 @@
     <string name="qr_point_camera">Point the camera at a QR code on your subscription page. Servers, certificate and account details are all fetched from the panel.</string>
     <string name="qr_unrecognized">This QR code is not a Tifusi subscription. Scan a QR code from the subscription page.</string>
     <string name="subscription_title">Subscription code or link</string>
+    <string name="servers_locked_note">🔒 Server details are locked by your provider; they can\'t be viewed, edited or copied.</string>
     <string name="subscription_hint">e.g. javad7KQ4MP9X</string>
     <string name="subscription_paste">Paste</string>
     <string name="subscription_add">Get servers</string>

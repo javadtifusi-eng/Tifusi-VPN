@@ -79,20 +79,64 @@ object SubscriptionClient {
     private val LINK = Regex("""^(https?://\S+?)/sub/([A-Za-z0-9-]{16,})/?(?:[?#]\S*)?$""", RegexOption.IGNORE_CASE)
 
     /**
-     * Resolves a pasted link, or a code read out from the panel, to the panel endpoint base. A bare
-     * code resolves against the panel this build ships with (tifusi.panelUrl in gradle.properties);
-     * `CODE@panel.example.com` reaches any other panel.
+     * Resolves a pasted link, or a code read out from the panel, to the panel endpoint base. The
+     * app carries no panel address of its own: a code from the panel has its host in it (see
+     * [splitEmbeddedHost]), like the QR code has the whole link, so moving to a new domain never
+     * needs a new build. `CODE@panel.example.com` is still accepted, and a bare code only when
+     * this build was given a default panel (tifusi.panelUrl in gradle.properties; empty by default).
      */
     fun normalize(input: String): String? {
         val value = input.trim()
         LINK.matchEntire(value)?.let { return "${it.groupValues[1]}/sub/${it.groupValues[2]}" }
         if ("://" in value || value.any { it.isWhitespace() || it == '/' }) return null
         val at = value.lastIndexOf('@')
-        val code = if (at >= 0) value.substring(0, at) else value
-        val panel = if (at >= 0) value.substring(at + 1).takeIf { it.isNotEmpty() }?.let { "https://$it" }
-        else BuildConfig.DEFAULT_PANEL_URL.trimEnd('/').takeIf { it.isNotEmpty() }
+        val typed = if (at >= 0) value.substring(0, at) else value
+        val embedded = splitEmbeddedHost(typed)
+        val code = embedded?.first ?: typed
+        val panel = when {
+            at >= 0 -> value.substring(at + 1).takeIf { it.isNotEmpty() }?.let { "https://$it" }
+            embedded != null -> "https://${embedded.second}"
+            else -> BuildConfig.DEFAULT_PANEL_URL.trimEnd('/').takeIf { it.isNotEmpty() }
+        }
         if (panel == null || code.length !in 9..128) return null
         return "$panel/code/" + URLEncoder.encode(code, "UTF-8").replace("+", "%20")
+    }
+
+    private val HOST = Regex("""^[a-z0-9.-]+\.[a-z0-9-]+(:\d{1,5})?$""")
+
+    /**
+     * The panel hands a code out as `CODE-<host in base32>`. The host is encoded rather than
+     * written out because the code travels over SMS, where a readable domain risks being
+     * filtered. Returns the bare code and the host, or null when there is no host on the value
+     * (older codes, or a username that contains a dash).
+     */
+    internal fun splitEmbeddedHost(value: String): Pair<String, String>? {
+        val dash = value.lastIndexOf('-')
+        if (dash <= 0 || dash == value.length - 1) return null
+        val host = decodeBase32(value.substring(dash + 1)) ?: return null
+        return if (HOST.matches(host)) value.substring(0, dash) to host else null
+    }
+
+    /** RFC 4648 base32, upper or lower case, padding optional; null on any other character. */
+    internal fun decodeBase32(text: String): String? {
+        var buffer = 0
+        var bits = 0
+        val out = StringBuilder()
+        for (ch in text.uppercase()) {
+            val v = when (ch) {
+                in 'A'..'Z' -> ch - 'A'
+                in '2'..'7' -> ch - '2' + 26
+                else -> return null
+            }
+            buffer = (buffer shl 5) or v
+            bits += 5
+            if (bits >= 8) {
+                bits -= 8
+                out.append(((buffer shr bits) and 0xFF).toChar())
+                buffer = buffer and ((1 shl bits) - 1)
+            }
+        }
+        return out.toString().lowercase()
     }
 
     /** Blocking network call; invoke off the main thread. */
@@ -101,35 +145,83 @@ object SubscriptionClient {
         // A stable per-install id, so the panel's device limit counts this phone once even as
         // its mobile IP changes between refreshes.
         val hwid = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
-        val connection = (URL("$normalized/app.json?hwid=" + URLEncoder.encode(hwid, "UTF-8"))
-            .openConnection() as HttpURLConnection).apply {
-            connectTimeout = TIMEOUT_MS
-            readTimeout = TIMEOUT_MS
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "TifusiVPN-Android")
-        }
-        try {
-            val code = connection.responseCode
-            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            when (code) {
-                in 200..299 -> Unit
-                403 -> throw SubscriptionError.DeviceLimit
-                // The panel's own lookup answers "Not found"; FastAPI's unknown-route answer is
-                // "Not Found", meaning the panel predates this endpoint.
-                404 -> throw if (body.contains("Not found")) SubscriptionError.NotFound else SubscriptionError.PanelOutdated
-                else -> throw SubscriptionError.Network("HTTP $code")
+        val ours = httpGet("$normalized/app.json?hwid=" + URLEncoder.encode(hwid, "UTF-8"), "application/json")
+        when (ours.status) {
+            in 200..299 -> {
+                val json = runCatching { JSONObject(ours.body) }.getOrNull()
+                if (json != null) {
+                    val profiles = parseProfiles(json).ifEmpty { throw SubscriptionError.NoServers }
+                    return SubscriptionResult(profiles, parseInfo(json))
+                }
             }
-            val json = JSONObject(body)
-            val profiles = parseProfiles(json).ifEmpty { throw SubscriptionError.NoServers }
-            return SubscriptionResult(profiles, parseInfo(json))
-        } catch (e: SubscriptionError) {
-            throw e
+            403 -> throw SubscriptionError.DeviceLimit
+            // This project's panel answers a wrong code with "Not found"; any other 404 (FastAPI's
+            // "Not Found", another panel's own page) just means there is no app.json here.
+            404 -> if (ours.body.contains("Not found")) throw SubscriptionError.NotFound
+            else -> throw SubscriptionError.Network("HTTP ${ours.status}")
+        }
+        // Not this project's panel, or one that predates app.json. The app is not tied to one
+        // panel, so fall back to the standard subscription every panel serves at /sub/<token>.
+        val plain = httpGet(standardUrl(normalized), "*/*")
+        if (plain.status !in 200..299) throw SubscriptionError.PanelOutdated
+        val json = standardSubscriptionJson(plain.body, plain.userinfo)
+        val profiles = parseProfiles(json).ifEmpty { throw SubscriptionError.NoServers }
+        return SubscriptionResult(profiles, parseInfo(json))
+    }
+
+    private class HttpResult(val status: Int, val body: String, val userinfo: String?)
+
+    private fun httpGet(url: String, accept: String): HttpResult {
+        try {
+            val connection = URL(url).openConnection() as HttpURLConnection
+            connection.connectTimeout = TIMEOUT_MS
+            connection.readTimeout = TIMEOUT_MS
+            connection.setRequestProperty("Accept", accept)
+            connection.setRequestProperty("User-Agent", "TifusiVPN-Android")
+            try {
+                val status = connection.responseCode
+                val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+                val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                return HttpResult(status, body, connection.getHeaderField("Subscription-Userinfo"))
+            } finally {
+                connection.disconnect()
+            }
         } catch (e: Exception) {
             throw SubscriptionError.Network(e.message)
-        } finally {
-            connection.disconnect()
         }
+    }
+
+    /** `<panel>/code/<code>` has no standard form; a code that is a panel's own token maps to `/sub/<code>`. */
+    private fun standardUrl(normalized: String): String =
+        if ("/code/" in normalized) normalized.replaceFirst("/code/", "/sub/") else normalized
+
+    /**
+     * A standard subscription (what any panel serves at /sub/<token>): share links one per line,
+     * plain or base64, with usage in the `Subscription-Userinfo` header. Only what this app can
+     * dial is kept, as the same arrays [parseProfiles] reads from app.json.
+     */
+    internal fun standardSubscriptionJson(body: String, userinfo: String?): JSONObject {
+        val lines = subscriptionLines(body)
+        val json = JSONObject()
+        json.put("vless", JSONArray(lines.filter { it.startsWith("vless://", ignoreCase = true) }))
+        json.put("hysteria2", JSONArray(lines.filter { Hysteria2Link.isHysteria2(it) }))
+        val fields = userinfo.orEmpty().split(';').mapNotNull { part ->
+            val kv = part.split('=', limit = 2)
+            if (kv.size != 2) return@mapNotNull null
+            kv[1].trim().toLongOrNull()?.let { value -> kv[0].trim().lowercase() to value }
+        }.toMap()
+        json.put("used_traffic", (fields["upload"] ?: 0L) + (fields["download"] ?: 0L))
+        fields["total"]?.takeIf { it > 0 }?.let { json.put("data_limit", it) }
+        fields["expire"]?.takeIf { it > 0 }?.let { json.put("expire", it) }
+        return json
+    }
+
+    private fun subscriptionLines(body: String): List<String> {
+        val text = body.trim()
+        val decoded = if ("://" in text) text else runCatching {
+            String(java.util.Base64.getMimeDecoder().decode(text.replace('-', '+').replace('_', '/')))
+        }.getOrDefault(text)
+        return decoded.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
     }
 
     /** Every usable server in app.json, IKEv2 first; empty only when no array has one. */

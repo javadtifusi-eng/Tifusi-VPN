@@ -49,13 +49,13 @@ WireGuard, L2TP and PPTP were removed. Saved profiles of those types are skipped
 
 ### Importing servers from the panel
 On the servers screen, enter an **access code** or a **subscription link** and tap "Get servers". All of the user's IKEv2, VLESS and Hysteria2 servers are added automatically with username, password, PSK and Remote ID, and "Refresh" reads panel changes again.
-- **Access code:** looks like `javad7KQ4MP9X` and is shown at the top of the user's subscription page. It is meant for cases where the link can't be sent and has to be read out. Letter case does not matter. A bare code goes to this build's default panel (`tifusi.panelUrl` in `gradle.properties`); for any other panel write `code@panel-domain`, for example `ali7KQ4MP9X@panel.example.com`.
-- **Subscription link:** `https://<panel>/sub/<token>` works with any panel.
+- **Access code:** looks like `javad7KQ4MP9X` and is shown at the top of the user's subscription page. It is meant for cases where the link can't be sent and has to be read out. Letter case does not matter. The panel writes the panel's address into the code itself (`CODE-<encoded host>`), so the app needs no address of its own and a domain change needs no new build. `code@panel-domain` (for example `ali7KQ4MP9X@panel.example.com`) also works.
+- **Subscription link:** `https://<panel>/sub/<token>` works with any panel. A panel without this project's `app.json` is read through its standard subscription (VLESS and Hysteria2 links, usage from `Subscription-Userinfo`).
 - **Server certificate** comes from the panel automatically and is placed in the "Server CA certificate" field (the issuer of the server certificate). If the server certificate was renewed and the app can't connect, tap "Refresh".
 - **Contact:** the Telegram ID in `tifusi.supportTelegram` in `gradle.properties` is shown on the profile tab.
 
 ### Building the app for your own panel
-Set `tifusi.panelUrl` in `gradle.properties` to your panel's address, optionally set `tifusi.supportTelegram` to your support ID, and build. Without this the app still works with any panel through a subscription link or `code@domain`.
+Optionally set `tifusi.supportTelegram` in `gradle.properties` to your support ID, and build. The app works with any panel through a subscription link or an access code; `tifusi.panelUrl` is empty by default and only gives a bare code somewhere to go.
 - Resetting the access key in the panel invalidates both the old link and the old access code.
 - Manual server entry remains available for servers outside the panel.
 

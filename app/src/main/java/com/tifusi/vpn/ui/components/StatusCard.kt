@@ -16,7 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.NetworkPing
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +44,8 @@ fun StatusCard(
     downloadLabel: String,
     uploadLabel: String,
     speedLabel: String,
+    /** Tapping the latency re-measures it at once; null leaves it read-only. */
+    onSpeedClick: (() -> Unit)? = null,
     /** Days and data left on the subscription; null hides the row. */
     quotaLabel: String?,
     isConnected: Boolean,
@@ -114,13 +116,20 @@ fun StatusCard(
 
         Divider(color = TifusiCardBorder)
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            TrafficStat(Icons.Default.ArrowDownward, downloadLabel)
-            TrafficStat(Icons.Default.ArrowUpward, uploadLabel)
-            TrafficStat(Icons.Default.Speed, speedLabel)
+        // Equal thirds, so a long value in one slot ("12.5 Mbps", a failure message) can never push
+        // its neighbours together. Latency gets its own icon: under the speedometer it read as a
+        // third speed figure.
+        Row(modifier = Modifier.fillMaxWidth()) {
+            TrafficStat(Icons.Default.ArrowDownward, downloadLabel, Modifier.weight(1f))
+            TrafficStat(Icons.Default.ArrowUpward, uploadLabel, Modifier.weight(1f))
+            TrafficStat(
+                Icons.Default.NetworkPing,
+                speedLabel,
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .then(if (onSpeedClick != null) Modifier.clickable(onClick = onSpeedClick) else Modifier),
+            )
         }
 
         quotaLabel?.let {
@@ -134,8 +143,12 @@ fun StatusCard(
 }
 
 @Composable
-private fun TrafficStat(icon: ImageVector, value: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun TrafficStat(icon: ImageVector, value: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
@@ -146,6 +159,7 @@ private fun TrafficStat(icon: ImageVector, value: String) {
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White,
+            maxLines = 1,
             modifier = Modifier.padding(start = 6.dp),
         )
     }

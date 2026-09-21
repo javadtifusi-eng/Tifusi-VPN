@@ -113,8 +113,8 @@
     <string name="quota_expired">منقضی شده</string>
     <string name="quota_data_left">%1$s مانده</string>
     <string name="quota_unlimited">حجم نامحدود</string>
-    <string name="internet_ok">✓ %1$d ms</string>
-    <string name="internet_fail">✗ بدون اینترنت</string>
+    <string name="internet_ok">%1$d ms</string>
+    <string name="internet_fail">✗ قطع</string>
     <string name="error_deactivated">اندروید VPN را خاموش کرد. معمولاً یعنی یک اپ VPN دیگر روشن شده؛ آن را خاموش کنید و دوباره وصل شوید.</string>
     <string name="action_dismiss">بستن</string>
 

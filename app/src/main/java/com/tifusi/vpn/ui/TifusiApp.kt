@@ -134,6 +134,7 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                     onSelectProtocol = homeViewModel::selectProtocol,
                     onServerClick = { navController.navigateToTab(TifusiDestination.SERVERS) },
                     onDismissMessage = homeViewModel::dismissMessage,
+                    onRetestLatency = homeViewModel::retestLatency,
                 )
             }
 

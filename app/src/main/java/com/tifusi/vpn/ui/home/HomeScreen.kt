@@ -36,6 +36,7 @@ fun HomeScreen(
     onSelectProtocol: (VpnProtocol) -> Unit,
     onServerClick: () -> Unit,
     onDismissMessage: () -> Unit,
+    onRetestLatency: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -72,6 +73,7 @@ fun HomeScreen(
             quotaLabel = state.subscriptionInfo
                 ?.takeIf { state.selectedProfile?.id?.startsWith(SubscriptionClient.ID_PREFIX) == true }
                 ?.let { quotaLabel(it) },
+            onSpeedClick = if (isConnected) onRetestLatency else null,
             isConnected = isConnected,
             onServerClick = onServerClick,
         )

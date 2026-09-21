@@ -27,11 +27,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.Mutex
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = VpnProfileRepository(application)
     private val controller = VpnController(application)
+
+    // The timer and a tap can land together; one measurement at a time keeps them from racing.
+    // Declared before init, which starts the loop that uses it.
+    private val latencyCheck = Mutex()
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -126,15 +132,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             while (true) {
                 if (_uiState.value.connectionState is VpnConnectionState.Connected) {
-                    val latency = if (_uiState.value.selectedProfile?.protocol == VpnProtocol.VLESS) {
-                        // This app bypasses its own VLESS tunnel, so only the core can test it.
-                        controller.vlessLatencyMs(INTERNET_CHECK_URL)
-                    } else {
-                        measureInternet()
-                    }
-                    if (_uiState.value.connectionState is VpnConnectionState.Connected) {
-                        _uiState.update { it.copy(internetChecked = true, internetLatencyMs = latency) }
-                    }
+                    checkLatency()
                     delay(INTERNET_CHECK_INTERVAL_MS)
                 } else {
                     delay(TICK_INTERVAL_MS)
@@ -203,7 +201,41 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** Milliseconds for a tiny request through the tunnel, or null when it does not get through. */
-    private fun measureInternet(): Long? = runCatching {
+    /** Tapping the latency readout: measure again now instead of waiting for the next tick. */
+    fun retestLatency() {
+        if (_uiState.value.connectionState !is VpnConnectionState.Connected || latencyCheck.isLocked) return
+        _uiState.update { it.copy(internetChecked = false) }
+        viewModelScope.launch(Dispatchers.IO) { checkLatency() }
+    }
+
+    private suspend fun checkLatency() = latencyCheck.withLock {
+        val latency = if (_uiState.value.selectedProfile?.protocol == VpnProtocol.VLESS) {
+            // This app bypasses its own VLESS tunnel, so only the core can test it.
+            controller.vlessLatencyMs(INTERNET_CHECK_URL)
+        } else {
+            measureInternet()
+        }
+        if (_uiState.value.connectionState is VpnConnectionState.Connected) {
+            _uiState.update { it.copy(internetChecked = true, internetLatencyMs = latency) }
+        }
+    }
+
+    /**
+     * Round-trip time through the tunnel, not the cost of setting up a connection.
+     *
+     * A single fresh request times DNS, the TCP handshake and the TLS handshake as well as the round
+     * trip, which on a mobile path in Iran reads as a second or more and looks like a broken tunnel.
+     * So the first request only warms a connection; its body is drained rather than disconnected,
+     * which hands the socket back to HttpURLConnection's keep-alive pool, and the second request
+     * reuses it and is the one timed. If that second one fails, the first still proves the tunnel
+     * works and its time is reported rather than nothing.
+     */
+    private fun measureInternet(): Long? {
+        val warm = timedRequest(keepAlive = true) ?: return null
+        return timedRequest(keepAlive = false) ?: warm
+    }
+
+    private fun timedRequest(keepAlive: Boolean): Long? = runCatching {
         val started = SystemClock.elapsedRealtime()
         val connection = (URL(INTERNET_CHECK_URL).openConnection() as HttpURLConnection).apply {
             connectTimeout = INTERNET_CHECK_TIMEOUT_MS
@@ -212,9 +244,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             useCaches = false
         }
         try {
-            if (connection.responseCode in 200..399) SystemClock.elapsedRealtime() - started else null
+            val ok = connection.responseCode in 200..399
+            // Draining is what returns the socket to the pool; disconnect() would close it.
+            runCatching { connection.inputStream.use { it.readBytes() } }
+            if (ok) SystemClock.elapsedRealtime() - started else null
         } finally {
-            connection.disconnect()
+            if (!keepAlive) connection.disconnect()
         }
     }.getOrNull()
 

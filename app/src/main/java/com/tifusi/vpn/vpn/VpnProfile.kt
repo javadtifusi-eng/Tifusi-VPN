@@ -30,4 +30,15 @@ data class VpnProfile(
     // VLESS: the raw vless:// share link, parsed by VlessLink on each connect. [serverAddress] only
     // mirrors its host for display.
     val vlessLink: String? = null,
-)
+
+    // Hysteria2: the raw hysteria2:// share link, parsed by Hysteria2Link on each connect.
+    val hysteria2Link: String? = null,
+) {
+    /** The share link the core service is started with, for the protocols it carries. */
+    val coreLink: String?
+        get() = when (protocol) {
+            VpnProtocol.VLESS -> vlessLink
+            VpnProtocol.HYSTERIA2 -> hysteria2Link
+            VpnProtocol.IKEV2 -> null
+        }
+}

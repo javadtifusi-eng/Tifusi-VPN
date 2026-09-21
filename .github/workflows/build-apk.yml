@@ -43,6 +43,22 @@ jobs:
             "https://github.com/2dust/AndroidLibXrayLite/releases/download/${LIBXRAY_VERSION}/libv2ray.aar"
           echo "${LIBXRAY_SHA256}  app/libs/libv2ray.aar" | sha256sum -c -
 
+      # The official Hysteria2 client, run by HysteriaClient as a local SOCKS5 proxy for the Xray
+      # core. Shipped as libhysteria.so because Android only executes files from the native library
+      # directory. Pinned by version and checksum, like the Xray core above.
+      - name: Download Hysteria2 client
+        env:
+          HYSTERIA_VERSION: v2.12.3
+        run: |
+          fetch() {
+            mkdir -p "app/src/main/jniLibs/$1"
+            curl -fsSL --retry 3 -o "app/src/main/jniLibs/$1/libhysteria.so" \
+              "https://github.com/apernet/hysteria/releases/download/app%2F${HYSTERIA_VERSION}/$2"
+            echo "$3  app/src/main/jniLibs/$1/libhysteria.so" | sha256sum -c -
+          }
+          fetch arm64-v8a   hysteria-android-arm64 8a946481d20eb5cd94be79dce0464d538098dfea3a721d7f41afb0a0564ef18d
+          fetch armeabi-v7a hysteria-android-armv7 42354a3ac4f0b8ba33ee3d790180c627384c718e6236ce63519460427459af36
+
       # The tag stays v<run number>: installed apps parse it as a number to detect updates. Only
       # the release title shows the user-facing 1.N version.
       - name: Version name

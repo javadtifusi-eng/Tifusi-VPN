@@ -40,7 +40,24 @@ object XrayConfig {
      * domain: the core's own resolver would send that lookup through the tunnel it is building.
      * TLS and REALITY keep the domain as server name either way.
      */
-    fun build(link: VlessLink, serverAddress: String = link.address): String = JSONObject().apply {
+    fun build(link: VlessLink, serverAddress: String = link.address): String =
+        assemble(vlessOutbound(link, serverAddress))
+
+    /**
+     * The same tunnel with the local Hysteria2 client (HysteriaClient) as the proxy: tun, DNS,
+     * routing and counters stay exactly as they are for VLESS, only where `proxy` leads changes.
+     */
+    fun buildForSocks(socksPort: Int): String = assemble(
+        JSONObject().put("tag", TAG_PROXY).put("protocol", "socks").put(
+            "settings",
+            JSONObject().put(
+                "servers",
+                JSONArray().put(JSONObject().put("address", "127.0.0.1").put("port", socksPort)),
+            ),
+        ),
+    )
+
+    private fun assemble(proxy: JSONObject): String = JSONObject().apply {
         put("log", JSONObject().put("loglevel", "warning"))
         // Per-outbound counters, read by CoreController.queryAllOutboundTrafficStats for the speed readout.
         put("stats", JSONObject())
@@ -48,7 +65,7 @@ object XrayConfig {
         put("inbounds", JSONArray().put(tunInbound()))
         put("outbounds", JSONArray().apply {
             // The first outbound is the default for anything no rule matches, the core's DNS included.
-            put(vlessOutbound(link, serverAddress))
+            put(proxy)
             put(JSONObject().put("tag", TAG_DIRECT).put("protocol", "freedom").put("settings", JSONObject()))
             put(
                 JSONObject().put("tag", TAG_BLOCK).put("protocol", "blackhole")

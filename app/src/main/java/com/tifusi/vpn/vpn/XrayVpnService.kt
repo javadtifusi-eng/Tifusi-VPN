@@ -123,11 +123,19 @@ class XrayVpnService : VpnService() {
         stopCore()
 
         val failure: String? = try {
-            val link = VlessLink.parse(rawLink)
-            // Resolved now, on the phone's own network: once the tunnel is up the core would have to
-            // look the server up through itself.
-            val serverAddress = if (VlessLink.isIpLiteral(link.address)) link.address else resolve(link.address)
-            val config = XrayConfig.build(link, serverAddress)
+            // Either way the server is resolved now, on the phone's own network: once the tunnel is
+            // up the lookup would have to go through the tunnel it is building.
+            val config = if (Hysteria2Link.isHysteria2(rawLink)) {
+                val link = Hysteria2Link.parse(rawLink)
+                val serverIp = if (VlessLink.isIpLiteral(link.address)) link.address else resolve(link.address)
+                // Started before the interface exists, so a server that refuses us never gets a
+                // tunnel brought up only to be torn down again.
+                XrayConfig.buildForSocks(HysteriaClient.start(this, link, serverIp))
+            } else {
+                val link = VlessLink.parse(rawLink)
+                val serverAddress = if (VlessLink.isIpLiteral(link.address)) link.address else resolve(link.address)
+                XrayConfig.build(link, serverAddress)
+            }
 
             if (prepare(this) != null) {
                 "VPN permission was withdrawn"
@@ -147,12 +155,14 @@ class XrayVpnService : VpnService() {
             }
         } catch (e: VlessLinkProblem) {
             "Invalid link: ${e.message}"
+        } catch (e: Hysteria2LinkProblem) {
+            "Invalid link: ${e.message}"
         } catch (e: Exception) {
             e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName
         }
 
         if (failure != null) {
-            Log.w(TAG, "VLESS start failed: $failure")
+            Log.w(TAG, "Tunnel start failed: $failure")
             stopTunnel(XrayStatus.Failed(runId, failure), startId)
         } else if (runId == currentRunId) {
             publish(XrayStatus.Running(runId))
@@ -292,12 +302,12 @@ class XrayVpnService : VpnService() {
             currentRunId = runId
             publish(XrayStatus.Starting(runId))
             context.getSharedPreferences(SESSION_PREFS, Context.MODE_PRIVATE).edit()
-                .putString(SESSION_LINK, profile.vlessLink)
+                .putString(SESSION_LINK, profile.coreLink)
                 .putString(SESSION_NAME, profile.name)
                 .apply()
             val intent = Intent(context, XrayVpnService::class.java)
                 .setAction(ACTION_START)
-                .putExtra(EXTRA_LINK, profile.vlessLink)
+                .putExtra(EXTRA_LINK, profile.coreLink)
                 .putExtra(EXTRA_NAME, profile.name)
                 .putExtra(EXTRA_RUN_ID, runId)
             ContextCompat.startForegroundService(context, intent)
@@ -374,6 +384,8 @@ class XrayVpnService : VpnService() {
                 }
                 runCatching { tunnel?.close() }
                 tunnel = null
+                // After the core, so nothing is left writing to a proxy that has gone.
+                HysteriaClient.stop()
             }
         }
 

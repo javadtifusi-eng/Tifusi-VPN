@@ -209,8 +209,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun checkLatency() = latencyCheck.withLock {
-        val latency = if (_uiState.value.selectedProfile?.protocol == VpnProtocol.VLESS) {
-            // This app bypasses its own VLESS tunnel, so only the core can test it.
+        val latency = if (_uiState.value.selectedProfile?.protocol?.runsInCore == true) {
+            // This app bypasses its own tunnel, so only the core can test it.
             controller.vlessLatencyMs(INTERNET_CHECK_URL)
         } else {
             measureInternet()

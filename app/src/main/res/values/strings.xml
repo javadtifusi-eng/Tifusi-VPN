@@ -181,4 +181,13 @@
     <string name="notification_channel_vpn">VPN status</string>
     <string name="notification_vless_active">VLESS tunnel is on</string>
     <string name="notification_vless_server">VLESS · %1$s</string>
+    <string name="error_missing_hysteria2_link">Paste a hysteria2:// link</string>
+    <string name="hy2_error_not_hy2">Not a hysteria2:// link</string>
+    <string name="hy2_error_missing_auth">The link has no password before \'@\'</string>
+    <string name="hy2_error_obfs">Unsupported obfuscation: %1$s</string>
+    <string name="hy2_error_obfs_password">The link uses salamander obfuscation but has no obfs-password</string>
+    <string name="protocol_hysteria2">Hysteria2</string>
+    <string name="protocol_hysteria2_tagline">UDP, for networks where TCP struggles</string>
+    <string name="field_hysteria2_link">hysteria2:// link</string>
+    <string name="notification_hy2_active">Hysteria2 is active</string>
 </resources>

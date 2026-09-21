@@ -50,6 +50,8 @@ import com.tifusi.vpn.ui.theme.TifusiNeonBlue
 import com.tifusi.vpn.ui.theme.TifusiNeonGreen
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
 import com.tifusi.vpn.vpn.Ikev2AuthType
+import com.tifusi.vpn.vpn.Hysteria2Link
+import com.tifusi.vpn.vpn.Hysteria2LinkProblem
 import com.tifusi.vpn.vpn.VlessLink
 import com.tifusi.vpn.vpn.VlessLinkProblem
 import com.tifusi.vpn.vpn.VpnProfile
@@ -95,8 +97,8 @@ fun AddServerScreen(viewModel: AddServerViewModel, onDone: () -> Unit) {
         FormField(stringResource(R.string.field_name), draft.name) { v ->
             viewModel.update { it.copy(name = v) }
         }
-        // A VLESS server's address is part of its link.
-        if (draft.protocol != VpnProtocol.VLESS) {
+        // A VLESS or Hysteria2 server's address is part of its link.
+        if (!draft.protocol.runsInCore) {
             FormField(stringResource(R.string.field_server_address), draft.serverAddress, keyboardType = KeyboardType.Uri) { v ->
                 viewModel.update { it.copy(serverAddress = v.trim()) }
             }
@@ -105,6 +107,7 @@ fun AddServerScreen(viewModel: AddServerViewModel, onDone: () -> Unit) {
         when (draft.protocol) {
             VpnProtocol.IKEV2 -> Ikev2Section(draft, viewModel)
             VpnProtocol.VLESS -> VlessSection(draft, viewModel)
+            VpnProtocol.HYSTERIA2 -> Hysteria2Section(draft, viewModel)
         }
 
         importError?.let {
@@ -293,6 +296,37 @@ private fun CredentialsFields(draft: VpnProfile, viewModel: AddServerViewModel) 
  * issues vless:// links, so the link itself is the whole entry. It is checked as it is typed.
  */
 @Composable
+private fun Hysteria2Section(draft: VpnProfile, viewModel: AddServerViewModel) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+
+    OutlinedButton(
+        onClick = { clipboard.getText()?.text?.let(viewModel::setHysteria2Link) },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Icon(Icons.Default.ContentPaste, contentDescription = null)
+        Text(stringResource(R.string.vless_paste_link), modifier = Modifier.padding(start = 6.dp))
+    }
+    FormField(stringResource(R.string.field_hysteria2_link), draft.hysteria2Link, singleLine = false, keyboardType = KeyboardType.Uri) { v ->
+        viewModel.setHysteria2Link(v)
+    }
+
+    val parsed = remember(draft.hysteria2Link) {
+        draft.hysteria2Link?.takeIf { it.isNotBlank() }?.let { runCatching { Hysteria2Link.parse(it) } }
+    }
+    parsed?.getOrNull()?.let { link ->
+        Text(
+            text = listOfNotNull("UDP", if (link.obfsPassword != null) "salamander" else null, link.server).joinToString(" · "),
+            style = MaterialTheme.typography.bodyMedium,
+            color = TifusiNeonGreen,
+        )
+    }
+    (parsed?.exceptionOrNull() as? Hysteria2LinkProblem)?.let { problem ->
+        Text(problem.localized(context), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+    }
+}
+
+@Composable
 private fun VlessSection(draft: VpnProfile, viewModel: AddServerViewModel) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -366,6 +400,7 @@ private fun FormField(
 private fun VpnProtocol.displayName(): String = when (this) {
     VpnProtocol.IKEV2 -> "IKEv2"
     VpnProtocol.VLESS -> "VLESS"
+    VpnProtocol.HYSTERIA2 -> "Hysteria2"
 }
 
 private fun Ikev2AuthType.labelRes(): Int = when (this) {

@@ -96,7 +96,7 @@ class VpnController(private val context: Context) {
 
         return when (profile.protocol) {
             VpnProtocol.IKEV2 -> connectIkev2(profile)
-            VpnProtocol.VLESS -> connectVless(profile)
+            VpnProtocol.VLESS, VpnProtocol.HYSTERIA2 -> connectVless(profile)
         }
     }
 
@@ -110,7 +110,7 @@ class VpnController(private val context: Context) {
         }
         when (profile.protocol) {
             VpnProtocol.IKEV2 -> ikev2Manager?.disconnect()
-            VpnProtocol.VLESS -> {
+            VpnProtocol.VLESS, VpnProtocol.HYSTERIA2 -> {
                 xrayRunId = null
                 XrayVpnService.stop(context)
             }
@@ -154,14 +154,14 @@ class VpnController(private val context: Context) {
             }
         }
 
-        if (activeProtocol == VpnProtocol.VLESS) reconcileVless()
+        if (activeProtocol?.runsInCore == true) reconcileVless()
 
         val connectingSince = connectingSinceElapsedMs
         if (_state.value is VpnConnectionState.Connecting && connectingSince != null &&
             SystemClock.elapsedRealtime() - connectingSince > CONNECT_TIMEOUT_MS
         ) {
             val failure = when (activeProtocol) {
-                VpnProtocol.VLESS -> {
+                VpnProtocol.VLESS, VpnProtocol.HYSTERIA2 -> {
                     XrayVpnService.stop(context)
                     xrayRunId = null
                     VpnFailure.Xray("Core did not come up within ${CONNECT_TIMEOUT_MS / 1000} s")
@@ -245,7 +245,7 @@ class VpnController(private val context: Context) {
         // platform IKEv2 one.
         VpnService.prepare(context)?.let { return it }
 
-        activeProtocol = VpnProtocol.VLESS
+        activeProtocol = profile.protocol
         markConnecting()
         try {
             // Returns at once; refresh() moves to Connected when the core reports it is running.
@@ -422,7 +422,7 @@ class VpnController(private val context: Context) {
 
     fun trafficStats(profile: VpnProfile): TrafficStats? = when (profile.protocol) {
         VpnProtocol.IKEV2 -> ikev2TrafficEstimate()
-        VpnProtocol.VLESS -> XrayVpnService.trafficStats()
+        VpnProtocol.VLESS, VpnProtocol.HYSTERIA2 -> XrayVpnService.trafficStats()
     }
 
     /** Device-wide rx, tx, mobile rx, mobile tx; android.net.TrafficStats reports -1 if unsupported. */

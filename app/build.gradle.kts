@@ -45,11 +45,13 @@ android {
 
     // The Xray core is a ~35 MB native library per ABI. Stored compressed it roughly halves the
     // download, which matters more on slow, filtered connections than the extraction at install.
+    // It is also what makes libhysteria.so runnable at all: HysteriaClient executes it from the
+    // native library directory, and an uncompressed library is never extracted there.
     packaging {
         jniLibs {
             useLegacyPackaging = true
-            // Phones only: the emulator (x86) libraries of WireGuard and ML Kit would otherwise land
-            // in the universal APK.
+            // Phones only: the emulator (x86) libraries of ML Kit would otherwise land in the
+            // universal APK.
             excludes += listOf("**/x86/*.so", "**/x86_64/*.so")
         }
     }

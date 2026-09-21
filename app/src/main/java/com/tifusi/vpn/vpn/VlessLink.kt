@@ -1,6 +1,5 @@
 package com.tifusi.vpn.vpn
 
-import java.net.URLDecoder
 
 /**
  * A parsed `vless://` share link, as the panel puts them in app.json's `vless` array:
@@ -69,14 +68,14 @@ data class VlessLink(
             if (!link.startsWith(SCHEME, ignoreCase = true)) throw VlessLinkProblem.NotAVlessLink
             var rest = link.substring(SCHEME.length)
 
-            val remark = rest.substringAfter('#', "").let(::decode).trim().takeIf { it.isNotEmpty() }
+            val remark = rest.substringAfter('#', "").let(ShareLinkSyntax::decode).trim().takeIf { it.isNotEmpty() }
             rest = rest.substringBefore('#')
-            val query = parseQuery(rest.substringAfter('?', ""))
+            val query = ShareLinkSyntax.parseQuery(rest.substringAfter('?', ""))
             rest = rest.substringBefore('?').trimEnd('/')
 
             val at = rest.lastIndexOf('@')
             if (at <= 0) throw VlessLinkProblem.MissingUuid
-            val uuid = decode(rest.substring(0, at)).trim()
+            val uuid = ShareLinkSyntax.decode(rest.substring(0, at)).trim()
             if (uuid.isEmpty()) throw VlessLinkProblem.MissingUuid
             if (!UUID.matches(uuid) &&
                 (uuid.toByteArray(Charsets.UTF_8).size > MAX_CUSTOM_ID_BYTES || uuid.any { it.isWhitespace() })
@@ -84,8 +83,8 @@ data class VlessLink(
                 throw VlessLinkProblem.BadUuid
             }
 
-            val (address, portText) = splitHostPort(rest.substring(at + 1))
-            if (address.isEmpty()) throw VlessLinkProblem.MissingAddress
+            val (address, portText) = ShareLinkSyntax.splitHostPort(rest.substring(at + 1))
+            if (address.isNullOrEmpty()) throw VlessLinkProblem.MissingAddress
             val port = portText?.toIntOrNull()?.takeIf { it in 1..65535 } ?: throw VlessLinkProblem.BadPort
 
             val network = when (val type = query["type"]?.lowercase().orEmpty()) {
@@ -162,40 +161,6 @@ data class VlessLink(
             if (host.contains(':')) return true
             val match = IPV4.matchEntire(host) ?: return false
             return match.groupValues.drop(1).all { it.toInt() in 0..255 }
-        }
-
-        private fun splitHostPort(authority: String): Pair<String, String?> {
-            if (authority.startsWith('[')) {
-                val close = authority.indexOf(']')
-                if (close < 0) throw VlessLinkProblem.MissingAddress
-                val port = authority.substring(close + 1).removePrefix(":").takeIf { it.isNotEmpty() }
-                return authority.substring(1, close) to port
-            }
-            val colon = authority.lastIndexOf(':')
-            if (colon < 0) return authority to null
-            return authority.substring(0, colon) to authority.substring(colon + 1)
-        }
-
-        /** Keys are case-sensitive (serviceName, headerType); a repeated key keeps its first value. */
-        private fun parseQuery(query: String): Map<String, String> {
-            val result = LinkedHashMap<String, String>()
-            query.split('&').forEach { pair ->
-                if (pair.isEmpty()) return@forEach
-                val key = decode(pair.substringBefore('='))
-                val value = decode(pair.substringAfter('=', ""))
-                if (key.isNotEmpty() && value.isNotEmpty() && key !in result) result[key] = value
-            }
-            return result
-        }
-
-        /**
-         * Percent-decoding only. URLDecoder alone would turn '+' into a space, which corrupts paths and
-         * base64-like values; share links encode a space as %20.
-         */
-        private fun decode(value: String): String = try {
-            URLDecoder.decode(value.replace("+", "%2B"), "UTF-8")
-        } catch (e: IllegalArgumentException) {
-            value
         }
     }
 }

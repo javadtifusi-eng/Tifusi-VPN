@@ -12,6 +12,7 @@ import com.tifusi.vpn.data.VpnProfileRepository
 import com.tifusi.vpn.vpn.CertificateProblem
 import com.tifusi.vpn.vpn.CertificateStore
 import com.tifusi.vpn.vpn.ValidationIssue
+import com.tifusi.vpn.vpn.Hysteria2Link
 import com.tifusi.vpn.vpn.VlessLink
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProfileValidator
@@ -78,6 +79,19 @@ class AddServerViewModel(application: Application) : AndroidViewModel(applicatio
      * The link is the whole VLESS configuration. The address shown in the server list, and the name
      * while the user has not typed one, come from it, so manual servers read like subscribed ones.
      */
+    /** Same as [setVlessLink]: the link is the whole configuration, the rest is read from it. */
+    fun setHysteria2Link(raw: String) {
+        val value = raw.trim()
+        val link = runCatching { Hysteria2Link.parse(value) }.getOrNull()
+        update {
+            it.copy(
+                hysteria2Link = value,
+                serverAddress = link?.address.orEmpty(),
+                name = if (it.name.isBlank()) link?.remark.orEmpty() else it.name,
+            )
+        }
+    }
+
     fun setVlessLink(raw: String) {
         val value = raw.trim()
         val link = runCatching { VlessLink.parse(value) }.getOrNull()

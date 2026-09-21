@@ -4,6 +4,7 @@ import android.content.Context
 import com.tifusi.vpn.R
 import com.tifusi.vpn.vpn.CertificateProblem
 import com.tifusi.vpn.vpn.ValidationIssue
+import com.tifusi.vpn.vpn.Hysteria2LinkProblem
 import com.tifusi.vpn.vpn.VlessLinkProblem
 import com.tifusi.vpn.vpn.VpnFailure
 import java.text.DateFormat
@@ -21,6 +22,8 @@ fun ValidationIssue.localized(context: Context): String = when (this) {
     ValidationIssue.MissingVlessLink -> context.getString(R.string.error_missing_vless_link)
     ValidationIssue.VlessInsecureIgnored -> context.getString(R.string.error_vless_insecure_ignored)
     is ValidationIssue.BadVlessLink -> problem.localized(context)
+    ValidationIssue.MissingHysteria2Link -> context.getString(R.string.error_missing_hysteria2_link)
+    is ValidationIssue.BadHysteria2Link -> problem.localized(context)
     is ValidationIssue.BadServerCa -> problem.localized(context)
     is ValidationIssue.BadClientCertificate -> problem.localized(context)
 }
@@ -48,6 +51,15 @@ fun VlessLinkProblem.localized(context: Context): String = when (this) {
     VlessLinkProblem.MissingRealityPublicKey -> context.getString(R.string.vless_error_reality_pbk)
     VlessLinkProblem.MissingRealityServerName -> context.getString(R.string.vless_error_reality_sni)
     VlessLinkProblem.PlaintextNotAllowed -> context.getString(R.string.vless_error_plaintext)
+}
+
+fun Hysteria2LinkProblem.localized(context: Context): String = when (this) {
+    Hysteria2LinkProblem.NotAHysteria2Link -> context.getString(R.string.hy2_error_not_hy2)
+    Hysteria2LinkProblem.MissingAuth -> context.getString(R.string.hy2_error_missing_auth)
+    Hysteria2LinkProblem.MissingAddress -> context.getString(R.string.vless_error_missing_address)
+    Hysteria2LinkProblem.BadPort -> context.getString(R.string.vless_error_bad_port)
+    is Hysteria2LinkProblem.UnsupportedObfs -> context.getString(R.string.hy2_error_obfs, obfs)
+    Hysteria2LinkProblem.MissingObfsPassword -> context.getString(R.string.hy2_error_obfs_password)
 }
 
 fun CertificateProblem.localized(context: Context): String {

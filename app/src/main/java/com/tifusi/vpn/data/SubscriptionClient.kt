@@ -5,6 +5,7 @@ import android.provider.Settings
 import com.tifusi.vpn.BuildConfig
 import com.tifusi.vpn.vpn.CertificateStore
 import com.tifusi.vpn.vpn.Ikev2AuthType
+import com.tifusi.vpn.vpn.Hysteria2Link
 import com.tifusi.vpn.vpn.VlessLink
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProtocol
@@ -22,7 +23,7 @@ sealed class SubscriptionError(message: String) : Exception(message) {
     object NotFound : SubscriptionError("Subscription not found")
     object DeviceLimit : SubscriptionError("Device limit reached")
     object PanelOutdated : SubscriptionError("Panel has no app.json endpoint")
-    object NoServers : SubscriptionError("No IKEv2 or VLESS servers")
+    object NoServers : SubscriptionError("No IKEv2, VLESS or Hysteria2 servers")
     data class Network(val detail: String?) : SubscriptionError("Network: $detail")
 }
 
@@ -162,7 +163,18 @@ object SubscriptionClient {
                 vlessLink = raw.trim(),
             )
         }.distinctBy { it.id } // Ids key the server list; a duplicate would crash it.
-        return ikev2 + vless
+        // Same rule as VLESS: a link this app cannot use is skipped rather than failing the refresh.
+        val hysteria2 = json.optJSONArray("hysteria2").strings().mapNotNull { raw ->
+            val link = runCatching { Hysteria2Link.parse(raw) }.getOrNull() ?: return@mapNotNull null
+            VpnProfile(
+                id = "${ID_PREFIX}hysteria2:${link.address}:${link.port}:${link.remark.orEmpty()}",
+                name = link.remark ?: "${link.address}:${link.port}",
+                protocol = VpnProtocol.HYSTERIA2,
+                serverAddress = link.address,
+                hysteria2Link = raw.trim(),
+            )
+        }.distinctBy { it.id }
+        return ikev2 + vless + hysteria2
     }
 
     /**

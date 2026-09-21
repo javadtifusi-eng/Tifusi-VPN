@@ -102,6 +102,7 @@ fun VpnProfile.toJson(): JSONObject = JSONObject().apply {
     put("username", username)
     put("password", password)
     put("vlessLink", vlessLink)
+    put("hysteria2Link", hysteria2Link)
 }
 
 /** Null when this build has no protocol of that name any more, instead of throwing. */
@@ -130,6 +131,7 @@ fun JSONObject.toVpnProfile(protocol: VpnProtocol = VpnProtocol.valueOf(getStrin
     password = optStringOrNull("password"),
     // Absent in profiles saved before VLESS existed.
     vlessLink = optStringOrNull("vlessLink"),
+    hysteria2Link = optStringOrNull("hysteria2Link"),
 )
 
 private fun JSONObject.optStringOrNull(key: String): String? =

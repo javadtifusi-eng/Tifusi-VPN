@@ -181,4 +181,13 @@
     <string name="notification_channel_vpn">وضعیت VPN</string>
     <string name="notification_vless_active">تونل VLESS روشن است</string>
     <string name="notification_vless_server">VLESS · %1$s</string>
+    <string name="error_missing_hysteria2_link">یک لینک hysteria2:// بچسبانید</string>
+    <string name="hy2_error_not_hy2">این لینک hysteria2:// نیست</string>
+    <string name="hy2_error_missing_auth">لینک قبل از @ رمز ندارد</string>
+    <string name="hy2_error_obfs">استتار پشتیبانی نمی‌شود: %1$s</string>
+    <string name="hy2_error_obfs_password">لینک استتار salamander دارد ولی obfs-password ندارد</string>
+    <string name="protocol_hysteria2">Hysteria2</string>
+    <string name="protocol_hysteria2_tagline">UDP، برای شبکه‌ای که TCP رویش کند است</string>
+    <string name="field_hysteria2_link">لینک hysteria2://</string>
+    <string name="notification_hy2_active">Hysteria2 فعال است</string>
 </resources>

@@ -11,3 +11,6 @@ captures/
 *.jks
 # Xray core AAR (~62 MB): downloaded by CI and for local builds, never committed.
 app/libs/*.aar
+
+# The Hysteria2 client, ~21 MB per ABI: fetched per build with a pinned checksum, like libv2ray.aar.
+app/src/main/jniLibs/*/libhysteria.so

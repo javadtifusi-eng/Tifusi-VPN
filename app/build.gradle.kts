@@ -119,7 +119,6 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
     // WireGuard official Android backend (VpnService based tunnel)
-    implementation("com.wireguard.android:tunnel:1.0.20230706")
 
     // Xray core for VLESS/REALITY (2dust/AndroidLibXrayLite v26.9.9). Not in git: CI downloads it into
     // app/libs before building; for a local build, fetch the same release asset there first.

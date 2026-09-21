@@ -75,7 +75,11 @@ class VpnProfileRepository(private val context: Context) {
 
     private fun decodeProfiles(raw: String): List<VpnProfile> {
         val array = JSONArray(raw)
-        return (0 until array.length()).map { i -> array.getJSONObject(i).toVpnProfile() }
+        // One profile at a time, so a single entry this build cannot read costs that entry and
+        // nothing else. It matters on update: WireGuard, L2TP and PPTP were removed, and a saved
+        // profile of one of those used to throw here and take every other profile down with it —
+        // a working IKEv2 server included.
+        return (0 until array.length()).mapNotNull { i -> array.getJSONObject(i).toVpnProfileOrNull() }
     }
 }
 
@@ -97,21 +101,19 @@ fun VpnProfile.toJson(): JSONObject = JSONObject().apply {
     put("pkcs12Password", pkcs12Password)
     put("username", username)
     put("password", password)
-    put("l2tpIpsecPresharedKey", l2tpIpsecPresharedKey)
-    put("wireGuardPrivateKey", wireGuardPrivateKey)
-    put("wireGuardPeerPublicKey", wireGuardPeerPublicKey)
-    put("wireGuardPresharedKey", wireGuardPresharedKey)
-    put("wireGuardAddress", wireGuardAddress)
-    put("wireGuardDnsServers", wireGuardDnsServers)
-    put("wireGuardEndpointPort", wireGuardEndpointPort ?: JSONObject.NULL)
-    put("wireGuardAllowedIps", wireGuardAllowedIps)
     put("vlessLink", vlessLink)
 }
 
-fun JSONObject.toVpnProfile(): VpnProfile = VpnProfile(
+/** Null when this build has no protocol of that name any more, instead of throwing. */
+fun JSONObject.toVpnProfileOrNull(): VpnProfile? {
+    val protocol = VpnProtocol.entries.firstOrNull { it.name == optString("protocol") } ?: return null
+    return runCatching { toVpnProfile(protocol) }.getOrNull()
+}
+
+fun JSONObject.toVpnProfile(protocol: VpnProtocol = VpnProtocol.valueOf(getString("protocol"))): VpnProfile = VpnProfile(
     id = getString("id"),
     name = getString("name"),
-    protocol = VpnProtocol.valueOf(getString("protocol")),
+    protocol = protocol,
     serverAddress = getString("serverAddress"),
     countryName = optStringOrNull("countryName"),
     countryFlagEmoji = optStringOrNull("countryFlagEmoji"),
@@ -126,14 +128,6 @@ fun JSONObject.toVpnProfile(): VpnProfile = VpnProfile(
     pkcs12Password = optStringOrNull("pkcs12Password"),
     username = optStringOrNull("username"),
     password = optStringOrNull("password"),
-    l2tpIpsecPresharedKey = optStringOrNull("l2tpIpsecPresharedKey"),
-    wireGuardPrivateKey = optStringOrNull("wireGuardPrivateKey"),
-    wireGuardPeerPublicKey = optStringOrNull("wireGuardPeerPublicKey"),
-    wireGuardPresharedKey = optStringOrNull("wireGuardPresharedKey"),
-    wireGuardAddress = optStringOrNull("wireGuardAddress"),
-    wireGuardDnsServers = optStringOrNull("wireGuardDnsServers"),
-    wireGuardEndpointPort = if (isNull("wireGuardEndpointPort")) null else getInt("wireGuardEndpointPort"),
-    wireGuardAllowedIps = optStringOrNull("wireGuardAllowedIps") ?: "0.0.0.0/0, ::/0",
     // Absent in profiles saved before VLESS existed.
     vlessLink = optStringOrNull("vlessLink"),
 )

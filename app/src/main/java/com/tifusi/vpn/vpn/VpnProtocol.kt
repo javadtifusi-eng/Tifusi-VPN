@@ -2,15 +2,12 @@ package com.tifusi.vpn.vpn
 
 enum class VpnProtocol {
     IKEV2,
-    WIREGUARD,
-    L2TP,
-    PPTP,
 
-    /** VLESS (REALITY first) through the embedded Xray core, from a vless:// share link. */
+    /** VLESS (REALITY first) through the embedded core, from a vless:// share link. */
     VLESS;
 
     val supportsInAppToggle: Boolean
-        get() = this == IKEV2 || this == WIREGUARD || this == VLESS
+        get() = true
 }
 
 enum class Ikev2AuthType {

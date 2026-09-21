@@ -14,12 +14,6 @@
     <!-- Protocols -->
     <string name="protocol_ikev2">IKEv2</string>
     <string name="protocol_ikev2_tagline">پایدار و سریع</string>
-    <string name="protocol_l2tp">L2TP</string>
-    <string name="protocol_l2tp_tagline">مطمئن و امن</string>
-    <string name="protocol_pptp">PPTP</string>
-    <string name="protocol_pptp_tagline">سریع و سبک</string>
-    <string name="protocol_wireguard">WireGuard</string>
-    <string name="protocol_wireguard_tagline">جدید و قدرتمند</string>
     <string name="protocol_vless">VLESS</string>
     <string name="protocol_vless_tagline">Reality، سریع و مقاوم در برابر فیلتر</string>
 
@@ -59,13 +53,6 @@
     <string name="cert_ok">گواهی معتبر است</string>
 
     <!-- WireGuard fields -->
-    <string name="field_wg_private_key">کلید خصوصی</string>
-    <string name="field_wg_peer_public_key">کلید عمومی سرور</string>
-    <string name="field_wg_preshared_key">کلید مشترک (اختیاری)</string>
-    <string name="field_wg_address">آدرس</string>
-    <string name="field_wg_dns">سرورهای DNS</string>
-    <string name="field_wg_port">پورت</string>
-    <string name="field_wg_allowed_ips">آی‌پی‌های مجاز</string>
 
     <!-- VLESS -->
     <string name="field_vless_link">لینک vless://</string>
@@ -81,9 +68,6 @@
     <string name="error_missing_client_certificate">گواهی کلاینت و کلید خصوصی الزامی است</string>
     <string name="error_missing_server_ca">برای احراز هویت با گواهی، گواهی CA سرور الزامی است</string>
     <string name="error_no_server_ca_pinned">گواهی CA سرور وارد نشده. این حالت فقط وقتی کار می‌کند که سرور گواهی معتبر عمومی داشته باشد.</string>
-    <string name="error_missing_wg_private_key">کلید خصوصی WireGuard الزامی است</string>
-    <string name="error_missing_wg_peer_key">کلید عمومی سرور الزامی است</string>
-    <string name="error_missing_wg_address">آدرس اینترفیس الزامی است</string>
     <string name="error_missing_vless_link">لینک vless:// را وارد کنید</string>
     <string name="error_vless_insecure_ignored">این لینک می‌خواهد بررسی گواهی نادیده گرفته شود (allowInsecure). برنامه همیشه گواهی سرور را بررسی می‌کند، پس سروری که گواهی خودامضا دارد وصل نمی‌شود.</string>
     <string name="vless_error_not_vless">این یک لینک vless:// نیست</string>

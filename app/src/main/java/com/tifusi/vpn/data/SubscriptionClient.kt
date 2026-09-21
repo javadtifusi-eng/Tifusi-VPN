@@ -22,7 +22,7 @@ sealed class SubscriptionError(message: String) : Exception(message) {
     object NotFound : SubscriptionError("Subscription not found")
     object DeviceLimit : SubscriptionError("Device limit reached")
     object PanelOutdated : SubscriptionError("Panel has no app.json endpoint")
-    object NoServers : SubscriptionError("No IKEv2, L2TP or VLESS servers")
+    object NoServers : SubscriptionError("No IKEv2 or VLESS servers")
     data class Network(val detail: String?) : SubscriptionError("Network: $detail")
 }
 
@@ -150,18 +150,6 @@ object SubscriptionClient {
                 serverRootCaCertPem = cfg.str("certificate")?.let(::leafIssuerPem),
             )
         }
-        val l2tp = json.optJSONArray("l2tp").objects().map { cfg ->
-            val server = cfg.getString("server")
-            VpnProfile(
-                id = "${ID_PREFIX}l2tp:$server",
-                name = cfg.str("remark") ?: server,
-                protocol = VpnProtocol.L2TP,
-                serverAddress = server,
-                l2tpIpsecPresharedKey = cfg.str("psk"),
-                username = cfg.str("username"),
-                password = cfg.str("password"),
-            )
-        }
         // The panel lists VLESS inbounds as the same vless:// share links users paste into other
         // apps. A link this app cannot use is skipped, so one unusual inbound never blocks the rest.
         val vless = json.optJSONArray("vless").strings().mapNotNull { raw ->
@@ -174,7 +162,7 @@ object SubscriptionClient {
                 vlessLink = raw.trim(),
             )
         }.distinctBy { it.id } // Ids key the server list; a duplicate would crash it.
-        return ikev2 + l2tp + vless
+        return ikev2 + vless
     }
 
     /**

@@ -7,10 +7,9 @@ import android.content.Intent
 import android.provider.Settings
 
 /**
- * L2TP and PPTP have no public provisioning API — [android.net.VpnManager] only accepts
- * [android.net.Ikev2VpnProfile]. The platform keeps those profile types behind Settings, so the
- * best an unprivileged app can do is hold the credentials and hand the user off to the VPN
- * settings screen with the values ready to paste.
+ * IKEv2 on Android 8-10. [android.net.Ikev2VpnProfile] only exists from Android 11, and before it
+ * the platform keeps IKEv2 profiles behind Settings, so the best an unprivileged app can do is hold
+ * the credentials and hand the user off to the VPN settings screen with the values ready to paste.
  */
 object LegacyVpnLauncher {
 
@@ -42,10 +41,9 @@ object LegacyVpnLauncher {
         add(LegacyField(LegacyFieldKey.NAME, profile.name))
         add(LegacyField(LegacyFieldKey.TYPE, profile.protocol.name))
         add(LegacyField(LegacyFieldKey.SERVER, profile.serverAddress))
-        if (profile.protocol == VpnProtocol.L2TP) {
-            profile.l2tpIpsecPresharedKey?.takeIf { it.isNotBlank() }?.let {
-                add(LegacyField(LegacyFieldKey.IPSEC_PRESHARED_KEY, it))
-            }
+        // A PSK-mode Core; EAP profiles authenticate with the username and password below instead.
+        profile.presharedKey?.takeIf { it.isNotBlank() }?.let {
+            add(LegacyField(LegacyFieldKey.IPSEC_PRESHARED_KEY, it))
         }
         profile.username?.takeIf { it.isNotBlank() }?.let {
             add(LegacyField(LegacyFieldKey.USERNAME, it))

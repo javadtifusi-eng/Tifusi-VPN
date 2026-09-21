@@ -17,15 +17,6 @@ object VpnProfileValidator {
 
         when (profile.protocol) {
             VpnProtocol.IKEV2 -> validateIkev2(profile, issues)
-            VpnProtocol.WIREGUARD -> validateWireGuard(profile, issues)
-            VpnProtocol.L2TP -> {
-                if (profile.username.isNullOrBlank()) issues += ValidationIssue.MissingUsername
-                if (profile.password.isNullOrBlank()) issues += ValidationIssue.MissingPassword
-            }
-            VpnProtocol.PPTP -> {
-                if (profile.username.isNullOrBlank()) issues += ValidationIssue.MissingUsername
-                if (profile.password.isNullOrBlank()) issues += ValidationIssue.MissingPassword
-            }
             VpnProtocol.VLESS -> validateVless(profile, issues)
         }
 
@@ -120,11 +111,6 @@ object VpnProfileValidator {
         }
     }
 
-    private fun validateWireGuard(profile: VpnProfile, issues: MutableList<ValidationIssue>) {
-        if (profile.wireGuardPrivateKey.isNullOrBlank()) issues += ValidationIssue.MissingWireGuardPrivateKey
-        if (profile.wireGuardPeerPublicKey.isNullOrBlank()) issues += ValidationIssue.MissingWireGuardPeerKey
-        if (profile.wireGuardAddress.isNullOrBlank()) issues += ValidationIssue.MissingWireGuardAddress
-    }
 }
 
 sealed class ValidationIssue(val isBlocking: Boolean) {
@@ -135,9 +121,6 @@ sealed class ValidationIssue(val isBlocking: Boolean) {
     object MissingPassword : ValidationIssue(true)
     object MissingClientCertificate : ValidationIssue(true)
     object MissingServerCa : ValidationIssue(true)
-    object MissingWireGuardPrivateKey : ValidationIssue(true)
-    object MissingWireGuardPeerKey : ValidationIssue(true)
-    object MissingWireGuardAddress : ValidationIssue(true)
     object MissingVlessLink : ValidationIssue(true)
 
     /** The link sets allowInsecure, which is ignored: the server certificate is still verified. */

@@ -119,36 +119,3 @@ jobs:
           gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName' \
             | grep -vx "v${{ github.run_number }}" \
             | xargs -r -n1 gh release delete --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
-
-  # The Windows app ships in the same release as the APK (same v<run number> tag and version
-  # number), after the Android job has created that release.
-  windows:
-    needs: build
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-
-      - name: Build Windows app
-        run: dotnet publish windows/TifusiVPN/TifusiVPN.csproj -c Release -p:TifusiBuildNumber=${{ github.run_number }} -o publish
-
-      # Constant name, so releases/latest/download/TifusiVPN.exe always points at the newest build.
-      - name: Name the exe
-        shell: pwsh
-        run: Move-Item publish/TifusiVPN.exe TifusiVPN.exe
-
-      - name: Version name
-        shell: bash
-        run: |
-          base=$(grep '^tifusi.versionBase=' gradle.properties | cut -d= -f2 | tr -d '\r')
-          echo "VERSION_NAME=1.$(( ${{ github.run_number }} - base ))" >> "$GITHUB_ENV"
-
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ github.run_number }}
-          name: Tifusi VPN ${{ env.VERSION_NAME }}
-          files: TifusiVPN.exe

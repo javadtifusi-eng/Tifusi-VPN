@@ -167,8 +167,7 @@
 
     <!-- Services -->
     <string name="android_version">اندروید %1$s (API %2$d)</string>
-    <string name="wireguard_supported">WireGuard: اتصال خودکار</string>
-    <string name="legacy_supported">L2TP / PPTP: از طریق تنظیمات اندروید</string>
+    <string name="core_protocols_supported">VLESS / Hysteria2: اتصال خودکار</string>
 
     <!-- Misc -->
     <string name="language">زبان</string>

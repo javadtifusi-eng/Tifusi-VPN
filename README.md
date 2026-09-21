@@ -41,13 +41,14 @@ The app follows the panel's own code (`node_agent/ipsec.py`, `subscription/info_
 
 | Protocol | In Tifusi Panel | In the app |
 |---|---|---|
-| **IKEv2** | ✅ Two modes: "eap" (default) and "psk" | ✅ Automatic connect/disconnect (Android 11+) |
-| **L2TP/IPsec** | ✅ Shared PSK + username/password | ⚠️ Shows the details and opens the phone's VPN settings |
-| **WireGuard** | ❌ Removed from the panel | ✅ Only for WireGuard servers outside the panel |
-| **PPTP** | ❌ Not in the panel | ⚠️ Manual entry for other servers only |
+| **IKEv2** | ✅ Two modes: "eap" (default) and "psk" | ✅ Automatic connect/disconnect (Android 11+); on 8-10, details + the phone's VPN settings |
+| **VLESS** | ✅ | ✅ Through the built-in Xray core |
+| **Hysteria2** | ✅ | ✅ The official client behind the same core, with a QUIC keepalive |
+
+WireGuard, L2TP and PPTP were removed. Saved profiles of those types are skipped on update instead of breaking the rest.
 
 ### Importing servers from the panel
-On the servers screen, enter an **access code** or a **subscription link** and tap "Get servers". All of the user's IKEv2/L2TP servers are added automatically with username, password, PSK and Remote ID, and "Refresh" reads panel changes again.
+On the servers screen, enter an **access code** or a **subscription link** and tap "Get servers". All of the user's IKEv2, VLESS and Hysteria2 servers are added automatically with username, password, PSK and Remote ID, and "Refresh" reads panel changes again.
 - **Access code:** looks like `javad7KQ4MP9X` and is shown at the top of the user's subscription page. It is meant for cases where the link can't be sent and has to be read out. Letter case does not matter. A bare code goes to this build's default panel (`tifusi.panelUrl` in `gradle.properties`); for any other panel write `code@panel-domain`, for example `ali7KQ4MP9X@panel.example.com`.
 - **Subscription link:** `https://<panel>/sub/<token>` works with any panel.
 - **Server certificate** comes from the panel automatically and is placed in the "Server CA certificate" field (the issuer of the server certificate). If the server certificate was renewed and the app can't connect, tap "Refresh".
@@ -74,7 +75,7 @@ GET <panel>/sub/<secret token>/app.json?hwid=<device id>
 GET <panel>/code/<access code>/app.json?hwid=<device id>
 {"v":1, "username":"…", "status":"…", "expire":…, "used_traffic":…, "data_limit":…,
  "ikev2":[{"remark","server","remote_id","username","password","psk"?,"certificate"?}],
- "l2tp":[{"remark","server","username","password","psk"?}]}
+ "vless":["vless://…"], "hysteria2":["hysteria2://…"], "subscription_url":"…"}
 ```
 
 - For IKEv2, `psk` is sent only in psk mode; the app detects the authentication mode from its presence.
@@ -124,21 +125,19 @@ app/src/main/java/com/tifusi/vpn/
 ├── vpn/
 │   ├── VpnController.kt        # single connect/disconnect entry point for all protocols
 │   ├── Ikev2VpnManager.kt      # VpnManager + Ikev2VpnProfile
-│   ├── WireGuardVpnManager.kt  # WireGuard GoBackend
-│   ├── LegacyVpnLauncher.kt    # L2TP/PPTP → Android settings
+│   ├── XrayVpnService.kt       # this app's VpnService + the Xray core (VLESS, Hysteria2)
+│   ├── HysteriaClient.kt       # runs the Hysteria2 client as a local SOCKS5 proxy
+│   ├── LegacyVpnLauncher.kt    # IKEv2 on Android 8-10 → Android settings
 │   ├── CertificateStore.kt     # reading and checking certificates
 │   ├── VpnProfileValidator.kt  # checks before saving/connecting
 │   └── VpnProfile.kt, VpnProtocol.kt
-├── qr/QrConfigParser.kt        # panel QR / panel copy text / WireGuard
 ├── data/VpnProfileRepository.kt
 └── ui/                         # Compose: home, servers, profile, services
 ```
 
 ## Current limitations
-- Traffic statistics only for WireGuard; "speed" is not calculated yet.
 - Profiles (including passwords) are stored in the app's internal storage without separate encryption. Android backup is disabled for the app.
 - On Android 11 and 12 the Remote ID can't be set separately from the address (see Working with Tifusi Panel).
-- Newer One UI versions may not offer creating L2TP profiles in settings.
 - The current icon is a simplified version of the logo.
 
 ---

@@ -119,8 +119,7 @@ fun ServicesScreen() {
             ),
             color = if (ikev2Supported) TifusiNeonGreen else MaterialTheme.colorScheme.error,
         )
-        InfoCard(stringResource(R.string.wireguard_supported))
-        InfoCard(stringResource(R.string.legacy_supported))
+        InfoCard(stringResource(R.string.core_protocols_supported))
     }
 }
 

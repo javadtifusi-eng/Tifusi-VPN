@@ -167,8 +167,7 @@
 
     <!-- Services -->
     <string name="android_version">Android %1$s (API %2$d)</string>
-    <string name="wireguard_supported">WireGuard: automatic connect</string>
-    <string name="legacy_supported">L2TP / PPTP: through Android Settings</string>
+    <string name="core_protocols_supported">VLESS / Hysteria2: automatic connect</string>
 
     <!-- Misc -->
     <string name="language">Language</string>

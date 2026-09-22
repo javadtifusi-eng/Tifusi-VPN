@@ -65,8 +65,9 @@ android {
         kotlinCompilerExtensionVersion = "1.5.14"
     }
 
-    // A fixed debug key kept in the repo, so every CI build carries the same signature and installs
-    // over the previous one. It protects nothing secret; it only keeps in-app updates working.
+    // The key every earlier release shipped with. It is public (it sits in this repo), so it only
+    // signs local debug builds now. Releases are left unsigned here and signed in CI with the private
+    // release key plus signing/lineage.bin, which rotates installed apps from this key to that one.
     signingConfigs {
         getByName("debug") {
             storeFile = file("tifusi-debug.p12")
@@ -82,10 +83,9 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
-            // Published builds are release builds signed with the same fixed key as debug, so they
-            // install over earlier debug releases. Play Protect scans debuggable APKs from outside
-            // the store much longer, which stalled in-app updates.
-            signingConfig = signingConfigs.getByName("debug")
+            // Published builds are release (not debuggable) builds: Play Protect scans debuggable
+            // APKs from outside the store much longer, which stalled in-app updates. Signed in CI.
+            signingConfig = null
             isMinifyEnabled = false
         }
     }

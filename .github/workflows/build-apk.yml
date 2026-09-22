@@ -71,15 +71,55 @@ jobs:
       - name: Build release APK
         run: gradle assembleRelease -Ptifusi.buildNumber=${{ github.run_number }}
 
+      # Signing with key rotation. The v2 block is signed with the old public key, so Android 8
+      # keeps accepting updates; the v3 block is signed with the private release key plus the
+      # lineage proving the old key handed over to it, so Android 9+ installs the update in place
+      # and from then on refuses any APK signed with the old key alone (rollback is not granted).
       # The asset names have to stay constant, otherwise the releases/latest/download links break
       # on every build. tifusi-vpn.apk stays the universal APK: the in-app updater downloads it.
-      - name: Name the APKs
+      - name: Sign the APKs
+        env:
+          RELEASE_KEYSTORE_B64: ${{ secrets.TIFUSI_RELEASE_KEYSTORE_B64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.TIFUSI_RELEASE_KEYSTORE_PASSWORD }}
         run: |
+          if [ -z "$RELEASE_KEYSTORE_B64" ] || [ -z "$RELEASE_KEYSTORE_PASSWORD" ]; then
+            echo "::error::The release signing secrets are not set"
+            exit 1
+          fi
+          bt="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          ks="$RUNNER_TEMP/release.p12"
+          echo "$RELEASE_KEYSTORE_B64" | base64 -d > "$ks"
           out=app/build/outputs/apk/release
-          mv "$out/app-universal-release.apk" tifusi-vpn.apk
-          mv "$out/app-arm64-v8a-release.apk" tifusi-vpn-arm64.apk
-          mv "$out/app-armeabi-v7a-release.apk" tifusi-vpn-armv7.apk
+          sign() {
+            "$bt/zipalign" -f -p 4 "$out/app-$1-release-unsigned.apk" "$RUNNER_TEMP/aligned.apk"
+            "$bt/apksigner" sign \
+              --ks app/tifusi-debug.p12 --ks-pass pass:tifusi-debug --ks-key-alias tifusi \
+              --next-signer --ks "$ks" --ks-pass env:RELEASE_KEYSTORE_PASSWORD --ks-key-alias tifusi-release \
+              --lineage app/signing/lineage.bin --rotation-min-sdk-version 28 \
+              --out "$2" "$RUNNER_TEMP/aligned.apk"
+            "$bt/apksigner" verify --min-sdk-version 26 "$2"
+          }
+          sign universal tifusi-vpn.apk
+          sign arm64-v8a tifusi-vpn-arm64.apk
+          sign armeabi-v7a tifusi-vpn-armv7.apk
+          rm -f "$ks"
           ls -la tifusi-vpn*.apk
+
+      # The build every customer has installed right now, so the emulator can install this one over
+      # it exactly as the in-app updater does. A signing mistake shows up here as a refused update
+      # instead of on customers' phones.
+      - name: Download the currently published APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo "$GITHUB_REPOSITORY" --pattern tifusi-vpn.apk --output previous.apk \
+            || { echo "No published release yet; the upgrade check is skipped."; exit 0; }
+          # SHA-256 of the old public key's certificate (app/tifusi-debug.p12).
+          old=26137e0f91870feb5e812de522cfc664e0e05a9c300946c708b43eb3fa2f615e
+          bt="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          if "$bt/apksigner" verify --print-certs --min-sdk-version 28 previous.apk | grep -q "SHA-256 digest: $old"; then
+            echo "PREVIOUS_OLD_KEY=1" >> "$GITHUB_ENV"
+          fi
 
       - name: Enable KVM for the emulator
         run: |
@@ -98,7 +138,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: bash .github/scripts/smoke-test.sh tifusi-vpn.apk
+          script: bash .github/scripts/smoke-test.sh tifusi-vpn.apk previous.apk
 
       - name: Publish release
         uses: softprops/action-gh-release@v2

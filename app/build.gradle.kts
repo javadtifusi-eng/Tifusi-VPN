@@ -21,6 +21,7 @@ android {
 
         buildConfigField("String", "DEFAULT_PANEL_URL", "\"${providers.gradleProperty("tifusi.panelUrl").getOrElse("")}\"")
         buildConfigField("String", "SUPPORT_TELEGRAM", "\"${providers.gradleProperty("tifusi.supportTelegram").getOrElse("")}\"")
+        buildConfigField("String", "SUPPORT_EMAIL", "\"${providers.gradleProperty("tifusi.supportEmail").getOrElse("")}\"")
         buildConfigField("String", "UPDATE_REPO", "\"${providers.gradleProperty("tifusi.updateRepo").getOrElse("")}\"")
 
     }

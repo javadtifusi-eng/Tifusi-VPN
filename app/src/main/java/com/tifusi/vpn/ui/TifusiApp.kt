@@ -178,7 +178,7 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                 )
             }
 
-            composable(TifusiDestination.PROFILE.route) { ProfileScreen() }
+            composable(TifusiDestination.PROFILE.route) { ProfileScreen(subscription = homeState.subscriptionInfo) }
 
             composable(TifusiDestination.SERVICES.route) { ServicesScreen() }
 

@@ -1,5 +1,30 @@
 package com.tifusi.vpn.ui.services
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.HeadsetMic
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.tifusi.vpn.ui.components.InfoCell
+import com.tifusi.vpn.ui.profile.openTelegram
+import com.tifusi.vpn.ui.profile.telegramUsername
+import com.tifusi.vpn.ui.theme.TifusiNeonBlue
+import com.tifusi.vpn.ui.theme.TifusiNeonBlueDeep
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -57,6 +82,7 @@ fun ServicesScreen() {
     val ikev2Supported = Ikev2VpnManager.isSupported()
     val scope = rememberCoroutineScope()
     var update by remember { mutableStateOf<UpdateState>(UpdateState.Checking) }
+    val support = telegramUsername(BuildConfig.SUPPORT_TELEGRAM)
 
     suspend fun checkForUpdate() {
         update = UpdateState.Checking
@@ -77,63 +103,144 @@ fun ServicesScreen() {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(stringResource(R.string.nav_services), style = MaterialTheme.typography.headlineMedium)
+        BlackCard(horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(
+                painter = painterResource(R.drawable.ic_logo_mark),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(Color.White),
+                modifier = Modifier.size(width = 86.dp, height = 47.dp),
+            )
+            Text("TIFUSI", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, letterSpacing = 6.sp)
+            Text(
+                stringResource(R.string.app_version, BuildConfig.VERSION_NAME),
+                color = TifusiTextSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(99.dp))
+                    .border(1.dp, TifusiCardBorder, RoundedCornerShape(99.dp))
+                    .padding(horizontal = 12.dp, vertical = 3.dp),
+            )
+        }
 
-        InfoCard(stringResource(R.string.app_version, BuildConfig.VERSION_NAME))
         if (UpdateChecker.isEnabled) {
-            when (val state = update) {
-                UpdateState.Checking -> InfoCard(stringResource(R.string.update_checking), color = TifusiTextSecondary)
-                UpdateState.UpToDate -> InfoCard(stringResource(R.string.update_up_to_date), color = TifusiNeonGreen)
-                UpdateState.Failed -> InfoCard(stringResource(R.string.update_failed), color = TifusiTextSecondary)
-                is UpdateState.Available -> {
-                    InfoCard(
-                        stringResource(R.string.update_available, state.release.versionName),
-                        color = TifusiNeonGreen,
-                    )
-                    // The browser or download manager fetches the APK and offers to install it.
-                    Button(
-                        onClick = {
-                            runCatching {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(state.release.downloadUrl)))
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.update_download))
+            BlackCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val (text, dot) = when (val state = update) {
+                        UpdateState.Checking -> stringResource(R.string.update_checking) to TifusiTextSecondary
+                        UpdateState.UpToDate -> stringResource(R.string.update_up_to_date) to TifusiNeonGreen
+                        UpdateState.Failed -> stringResource(R.string.update_failed) to TifusiTextSecondary
+                        is UpdateState.Available -> stringResource(R.string.update_available, state.release.versionName) to TifusiNeonBlue
                     }
-                }
-            }
-            if (update !is UpdateState.Checking) {
-                OutlinedButton(onClick = { scope.launch { checkForUpdate() } }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.update_check))
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(dot))
+                    Text(text, fontSize = 13.5.sp, modifier = Modifier.weight(1f).padding(horizontal = 10.dp))
+                    when (val state = update) {
+                        UpdateState.Checking -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = TifusiNeonBlue)
+                        // The browser or download manager fetches the APK and offers to install it.
+                        is UpdateState.Available -> PillButton(stringResource(R.string.update_download), filled = true) {
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(state.release.downloadUrl))) }
+                        }
+                        else -> PillButton(stringResource(R.string.update_check), filled = false) { scope.launch { checkForUpdate() } }
+                    }
                 }
             }
         }
 
-        InfoCard(stringResource(R.string.android_version, Build.VERSION.RELEASE, Build.VERSION.SDK_INT))
-        InfoCard(
-            text = stringResource(
-                if (ikev2Supported) R.string.android_version_note_ok else R.string.ikev2_unsupported_version
-            ),
-            color = if (ikev2Supported) TifusiNeonGreen else MaterialTheme.colorScheme.error,
-        )
-        InfoCard(stringResource(R.string.core_protocols_supported))
+        BlackCard {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                InfoCell(stringResource(R.string.about_android), "${Build.VERSION.RELEASE} · API ${Build.VERSION.SDK_INT}", Modifier.weight(1f))
+                InfoCell(stringResource(R.string.about_arch), Build.SUPPORTED_ABIS.firstOrNull() ?: "—", Modifier.weight(1f))
+            }
+            Text(
+                stringResource(if (ikev2Supported) R.string.android_version_note_ok else R.string.ikev2_unsupported_version),
+                color = if (ikev2Supported) TifusiNeonGreen else MaterialTheme.colorScheme.error,
+                fontSize = 12.5.sp,
+            )
+        }
+
+        BlackCard {
+            Text(stringResource(R.string.about_protocols), color = TifusiTextSecondary, fontSize = 12.5.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("REALITY", "VLESS", "HY2", "IKEv2").forEach {
+                    Text(
+                        it,
+                        color = TifusiNeonBlue,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF16171A))
+                            .border(1.dp, TifusiCardBorder, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 9.dp, vertical = 4.dp),
+                    )
+                }
+            }
+        }
+
+        // Both set per build in gradle.properties (tifusi.supportTelegram, tifusi.supportEmail); each
+        // tile is hidden when its value is empty, and the e-mail address itself is never shown.
+        support?.let { username ->
+            ContactTile(Icons.Default.HeadsetMic, stringResource(R.string.contact_us)) { openTelegram(context, username) }
+        }
+        BuildConfig.SUPPORT_EMAIL.takeIf { it.contains('@') }?.let { email ->
+            ContactTile(Icons.Default.Email, stringResource(R.string.contact_email)) {
+                runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$email"))) }
+            }
+        }
     }
 }
 
 @Composable
-private fun InfoCard(text: String, color: Color = Color.White) {
-    Text(
-        text = text,
-        color = color,
-        style = MaterialTheme.typography.bodyLarge,
+private fun ContactTile(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(TifusiSurface)
             .border(1.dp, TifusiCardBorder, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Color.White), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = Color.Black)
+        }
+        Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(start = 12.dp))
+        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TifusiTextSecondary)
+    }
+}
+
+@Composable
+private fun BlackCard(
+    horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF16171A), Color(0xFF0C0C0E))))
+            .border(1.dp, TifusiCardBorder, RoundedCornerShape(20.dp))
             .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = horizontalAlignment,
+        content = content,
+    )
+}
+
+@Composable
+private fun PillButton(text: String, filled: Boolean, onClick: () -> Unit) {
+    Text(
+        text,
+        color = if (filled) Color.White else Color.Black,
+        fontWeight = FontWeight.Bold,
+        fontSize = 13.sp,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (filled) Brush.linearGradient(listOf(TifusiNeonBlue, TifusiNeonBlueDeep)) else Brush.linearGradient(listOf(Color.White, Color.White)))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
     )
 }

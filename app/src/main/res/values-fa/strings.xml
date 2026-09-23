@@ -202,4 +202,10 @@
     <string name="hero_protocol">پروتکل</string>
     <string name="slide_connect">بکش برای اتصال</string>
     <string name="slide_disconnect">بکش برای قطع</string>
+    <string name="profile_days_left">روز مانده</string>
+    <string name="profile_data_left">حجم مانده</string>
+    <string name="about_android">اندروید</string>
+    <string name="about_arch">معماری</string>
+    <string name="about_protocols">پروتکل‌ها</string>
+    <string name="contact_email">ایمیل</string>
 </resources>

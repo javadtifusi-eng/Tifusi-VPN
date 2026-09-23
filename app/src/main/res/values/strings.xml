@@ -202,4 +202,10 @@
     <string name="hero_protocol">Protocol</string>
     <string name="slide_connect">Slide to connect</string>
     <string name="slide_disconnect">Slide to disconnect</string>
+    <string name="profile_days_left">Days left</string>
+    <string name="profile_data_left">Data left</string>
+    <string name="about_android">Android</string>
+    <string name="about_arch">Architecture</string>
+    <string name="about_protocols">Protocols</string>
+    <string name="contact_email">E-mail</string>
 </resources>

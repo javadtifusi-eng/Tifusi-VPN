@@ -47,7 +47,7 @@ import com.tifusi.vpn.ui.theme.TifusiNeonGreen
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
 import kotlin.math.roundToInt
 
-private val CellBackground = Color(0xFF0B0B0D)
+internal val CellBackground = Color(0xFF0B0B0D)
 
 /** Status, time, country and protocol in one card, V2Box style; speeds live in [TrafficMeter]. */
 @Composable

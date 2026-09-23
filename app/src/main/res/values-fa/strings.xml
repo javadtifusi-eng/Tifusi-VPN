@@ -196,4 +196,10 @@
     <string name="subscription_update">به‌روزرسانی اشتراک</string>
     <string name="subscription_remove">حذف اشتراک</string>
     <string name="subscription_remove_confirm">اشتراک و همه‌ی سرورهایش حذف شود؟</string>
+    <string name="hero_status">وضعیت</string>
+    <string name="hero_time">زمان</string>
+    <string name="hero_country">کشور</string>
+    <string name="hero_protocol">پروتکل</string>
+    <string name="slide_connect">بکش برای اتصال</string>
+    <string name="slide_disconnect">بکش برای قطع</string>
 </resources>

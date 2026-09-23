@@ -48,6 +48,8 @@ import com.tifusi.vpn.vpn.VlessLink
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProtocol
 import com.tifusi.vpn.vpn.XrayProbe
+import com.tifusi.vpn.ui.components.flagIn
+import com.tifusi.vpn.ui.components.protocolLabel
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -540,23 +542,6 @@ private fun Modifier.vertical() = layout { measurable, constraints ->
     }
 }
 
-/** What the tab says: the transport a VLESS link actually uses, not just "VLESS". */
-private fun protocolLabel(profile: VpnProfile): String = when (profile.protocol) {
-    VpnProtocol.IKEV2 -> "IKEv2"
-    VpnProtocol.HYSTERIA2 -> "HY2"
-    VpnProtocol.VLESS -> runCatching { VlessLink.parse(profile.vlessLink.orEmpty()) }.getOrNull()?.let { link ->
-        when {
-            link.security == VlessLink.SECURITY_REALITY -> "REALITY"
-            link.network == VlessLink.NETWORK_WS -> "WS"
-            link.network == VlessLink.NETWORK_GRPC -> "gRPC"
-            link.network == VlessLink.NETWORK_XHTTP -> "XHTTP"
-            link.network == VlessLink.NETWORK_HTTPUPGRADE -> "HTTPU"
-            link.security == VlessLink.SECURITY_TLS -> "TLS"
-            else -> "VLESS"
-        }
-    } ?: "VLESS"
-}
-
 /** Host and port a profile dials, for display and ping. */
 private fun endpoint(profile: VpnProfile): Pair<String, Int>? = when (profile.protocol) {
     VpnProtocol.VLESS -> runCatching { VlessLink.parse(profile.vlessLink.orEmpty()) }.getOrNull()?.let { it.address to it.port }
@@ -567,11 +552,3 @@ private fun endpoint(profile: VpnProfile): Pair<String, Int>? = when (profile.pr
 /** Measured through Xray, so VLESS only; Hysteria2 and IKEv2 run outside it. */
 private fun pingable(profile: VpnProfile) = profile.protocol == VpnProtocol.VLESS
 
-/** The first flag emoji (a pair of regional indicator letters) in a server's name. */
-private fun flagIn(text: String): String? {
-    val cps = text.codePoints().toArray()
-    for (i in 0 until cps.size - 1) {
-        if (cps[i] in 0x1F1E6..0x1F1FF && cps[i + 1] in 0x1F1E6..0x1F1FF) return String(cps, i, 2)
-    }
-    return null
-}

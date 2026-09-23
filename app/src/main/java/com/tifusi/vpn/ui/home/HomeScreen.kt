@@ -1,5 +1,17 @@
 package com.tifusi.vpn.ui.home
 
+import com.tifusi.vpn.ui.components.HomeHero
+import com.tifusi.vpn.ui.components.SlideToConnect
+import com.tifusi.vpn.ui.components.TrafficMeter
+import com.tifusi.vpn.ui.components.flag
+import com.tifusi.vpn.ui.components.plainName
+import com.tifusi.vpn.ui.components.protocolLabel
+import com.tifusi.vpn.ui.theme.TifusiCardBorder
+import com.tifusi.vpn.ui.theme.TifusiSurface
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,9 +31,7 @@ import com.tifusi.vpn.R
 import com.tifusi.vpn.data.SubscriptionClient
 import com.tifusi.vpn.data.SubscriptionInfo
 import com.tifusi.vpn.ui.components.LegacyHandoffCard
-import com.tifusi.vpn.ui.components.PowerButton
 import com.tifusi.vpn.ui.components.ProtocolGrid
-import com.tifusi.vpn.ui.components.StatusCard
 import com.tifusi.vpn.ui.localized
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
 import com.tifusi.vpn.vpn.VpnConnectionState
@@ -51,45 +61,53 @@ fun HomeScreen(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        StatusCard(
+        val profile = state.selectedProfile
+        HomeHero(
             statusLabel = when {
                 isConnected -> stringResource(R.string.status_connected)
                 isConnecting -> stringResource(R.string.status_connecting)
                 else -> stringResource(R.string.status_disconnected)
             },
+            isConnected = isConnected,
             durationLabel = formatDuration(state.connectedSeconds),
-            serverName = state.selectedProfile?.countryName ?: state.selectedProfile?.name,
-            serverLocation = state.selectedProfile?.serverAddress,
-            flagEmoji = state.selectedProfile?.countryFlagEmoji,
-            downloadBytesPerSec = state.downloadBytesPerSec.takeIf { isConnected },
-            uploadBytesPerSec = state.uploadBytesPerSec.takeIf { isConnected },
-            downloadTotal = state.trafficStats?.rxBytes.takeIf { isConnected },
-            uploadTotal = state.trafficStats?.txBytes.takeIf { isConnected },
-            speedLabel = when {
-                !isConnected -> "—"
+            flag = profile?.flag(),
+            country = profile?.plainName() ?: "—",
+            protocol = profile?.let(::protocolLabel) ?: "—",
+            // Only for servers that came from the subscription the numbers describe.
+            quotaLabel = state.subscriptionInfo
+                ?.takeIf { profile?.id?.startsWith(SubscriptionClient.ID_PREFIX) == true }
+                ?.let { quotaLabel(it) },
+            latencyLabel = when {
+                !isConnected -> null
                 !state.internetChecked -> "…"
                 state.internetLatencyMs != null -> stringResource(R.string.internet_ok, state.internetLatencyMs.toInt())
                 else -> stringResource(R.string.internet_fail)
             },
-            // Only for servers that came from the subscription the numbers describe.
-            quotaLabel = state.subscriptionInfo
-                ?.takeIf { state.selectedProfile?.id?.startsWith(SubscriptionClient.ID_PREFIX) == true }
-                ?.let { quotaLabel(it) },
-            onSpeedClick = if (isConnected) onRetestLatency else null,
-            isConnected = isConnected,
+            onLatencyClick = if (isConnected) onRetestLatency else null,
             onServerClick = onServerClick,
         )
 
-        PowerButton(
+        TrafficMeter(
+            downloadBytesPerSec = state.downloadBytesPerSec.takeIf { isConnected },
+            uploadBytesPerSec = state.uploadBytesPerSec.takeIf { isConnected },
+            downloadTotal = state.trafficStats?.rxBytes.takeIf { isConnected },
+            uploadTotal = state.trafficStats?.txBytes.takeIf { isConnected },
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(TifusiSurface)
+                .border(1.dp, TifusiCardBorder, RoundedCornerShape(16.dp))
+                .padding(12.dp),
+        )
+
+        SlideToConnect(
             isConnected = isConnected,
             isConnecting = isConnecting,
-            label = if (isConnected || isConnecting) {
-                stringResource(R.string.action_disconnect)
-            } else {
-                stringResource(R.string.action_connect)
+            label = when {
+                isConnecting -> stringResource(R.string.status_connecting)
+                isConnected -> stringResource(R.string.slide_disconnect)
+                else -> stringResource(R.string.slide_connect)
             },
-            onClick = onToggleConnection,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
+            onToggle = onToggleConnection,
         )
 
         // Surface certificate/validation failures inline rather than failing silently.

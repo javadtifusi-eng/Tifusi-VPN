@@ -196,4 +196,10 @@
     <string name="subscription_update">Update subscription</string>
     <string name="subscription_remove">Remove</string>
     <string name="subscription_remove_confirm">Remove the subscription and all its servers?</string>
+    <string name="hero_status">Status</string>
+    <string name="hero_time">Time</string>
+    <string name="hero_country">Country</string>
+    <string name="hero_protocol">Protocol</string>
+    <string name="slide_connect">Slide to connect</string>
+    <string name="slide_disconnect">Slide to disconnect</string>
 </resources>

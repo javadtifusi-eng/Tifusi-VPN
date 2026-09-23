@@ -1,6 +1,7 @@
 package com.tifusi.vpn.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -82,15 +84,18 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Image(
                             painter = painterResource(R.drawable.ic_logo_mark),
-                            contentDescription = null,
-                            modifier = Modifier.size(width = 56.dp, height = 30.dp),
+                            contentDescription = stringResource(R.string.app_name),
+                            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(androidx.compose.ui.graphics.Color.White),
+                            modifier = Modifier.size(width = 48.dp, height = 26.dp),
                         )
                         Text(
-                            text = stringResource(R.string.app_name),
-                            modifier = Modifier.padding(start = 10.dp),
+                            text = "TIFUSI",
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                            fontSize = 11.sp,
+                            letterSpacing = 4.sp,
                         )
                     }
                 },
@@ -156,6 +161,7 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                     onSubscriptionLinkChange = subscriptionViewModel::onLinkChange,
                     onImportSubscription = subscriptionViewModel::importLink,
                     onRefreshSubscription = subscriptionViewModel::refresh,
+                    onRemoveSubscription = subscriptionViewModel::remove,
                     onScanQr = { navController.navigate(ROUTE_SCAN_QR) },
                 )
             }

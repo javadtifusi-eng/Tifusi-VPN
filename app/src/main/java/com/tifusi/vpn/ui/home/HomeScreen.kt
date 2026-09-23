@@ -61,8 +61,10 @@ fun HomeScreen(
             serverName = state.selectedProfile?.countryName ?: state.selectedProfile?.name,
             serverLocation = state.selectedProfile?.serverAddress,
             flagEmoji = state.selectedProfile?.countryFlagEmoji,
-            downloadLabel = if (isConnected) formatSpeed(state.downloadBytesPerSec) else "—",
-            uploadLabel = if (isConnected) formatSpeed(state.uploadBytesPerSec) else "—",
+            downloadBytesPerSec = state.downloadBytesPerSec.takeIf { isConnected },
+            uploadBytesPerSec = state.uploadBytesPerSec.takeIf { isConnected },
+            downloadTotal = state.trafficStats?.rxBytes.takeIf { isConnected },
+            uploadTotal = state.trafficStats?.txBytes.takeIf { isConnected },
             speedLabel = when {
                 !isConnected -> "—"
                 !state.internetChecked -> "…"
@@ -158,13 +160,6 @@ private fun quotaLabel(info: SubscriptionInfo): String {
         stringResource(R.string.quota_data_left, formatBytes((limit - info.usedBytes).coerceAtLeast(0)))
     } ?: stringResource(R.string.quota_unlimited)
     return "⏳ $days   ·   📦 $data"
-}
-
-/** Bits per second, the way connection speeds are usually quoted. */
-private fun formatSpeed(bytesPerSec: Long?): String {
-    if (bytesPerSec == null) return "—"
-    val kbps = bytesPerSec * 8 / 1000.0
-    return if (kbps >= 1000) String.format(Locale.US, "%.1f Mbps", kbps / 1000) else String.format(Locale.US, "%.0f kbps", kbps)
 }
 
 private fun formatDuration(totalSeconds: Long): String {

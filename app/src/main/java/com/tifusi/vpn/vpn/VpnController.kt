@@ -445,7 +445,14 @@ class VpnController(private val context: Context) {
         val now = deviceTrafficCounters()
         if (base[0] < 0 || now[0] < 0) return null
         fun delta(i: Int) = if (base[i] < 0 || now[i] < 0) 0L else (now[i] - base[i]).coerceAtLeast(0)
-        fun tunnel(total: Long, mobile: Long) = if (mobile > 0) (total - mobile).coerceAtLeast(0) else total / 2
+        // Some phones count the tunnel interface in the totals and some do not. When they do, the
+        // total is about tunnel plus mobile; when they do not, total minus mobile stays near zero
+        // while mobile grows, and the encrypted mobile traffic is the best measure of the tunnel.
+        fun tunnel(total: Long, mobile: Long) = when {
+            mobile <= 0 -> total / 2
+            total - mobile < mobile / 4 -> mobile
+            else -> (total - mobile).coerceAtLeast(0)
+        }
         return TrafficStats(rxBytes = tunnel(delta(0), delta(2)), txBytes = tunnel(delta(1), delta(3)))
     }
 

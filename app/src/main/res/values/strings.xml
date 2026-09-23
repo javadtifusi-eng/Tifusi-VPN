@@ -189,4 +189,11 @@
     <string name="protocol_hysteria2_tagline">UDP, for networks where TCP struggles</string>
     <string name="field_hysteria2_link">hysteria2:// link</string>
     <string name="notification_hy2_active">Hysteria2 is active</string>
+    <string name="ping_all">Ping all</string>
+    <string name="servers_hint">Tap to select</string>
+    <string name="group_subscription">Subscription</string>
+    <string name="group_manual">Manual</string>
+    <string name="subscription_update">Update subscription</string>
+    <string name="subscription_remove">Remove</string>
+    <string name="subscription_remove_confirm">Remove the subscription and all its servers?</string>
 </resources>

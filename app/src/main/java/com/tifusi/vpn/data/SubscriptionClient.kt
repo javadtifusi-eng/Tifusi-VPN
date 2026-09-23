@@ -147,7 +147,7 @@ object SubscriptionClient {
     fun fetchProfiles(context: Context, link: String): SubscriptionResult {
         val normalized = normalize(link) ?: throw SubscriptionError.NotASubscriptionLink
         // Not a Tifusi Panel link: there is no app.json to ask for, only the standard subscription.
-        if (!LINK.matches(normalized) && "/code/" !in normalized) return fetchStandard(normalized)
+        if (!LINK.matches(normalized) && "/code/" !in normalized) return fetchStandard(normalized, withPageIkev2 = true)
         // A stable per-install id, so the panel's device limit counts this phone once even as
         // its mobile IP changes between refreshes.
         val hwid = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
@@ -171,13 +171,47 @@ object SubscriptionClient {
         return fetchStandard(standardUrl(normalized))
     }
 
-    private fun fetchStandard(url: String): SubscriptionResult {
+    private fun fetchStandard(url: String, withPageIkev2: Boolean = false): SubscriptionResult {
         val plain = httpGet(url, "*/*")
         if (plain.status !in 200..299) throw SubscriptionError.PanelOutdated
         val json = standardSubscriptionJson(plain.body, plain.userinfo)
+        if (withPageIkev2) pageIkev2(url)?.let { json.put("ikev2", JSONArray().put(it)) }
         val profiles = parseProfiles(json).ifEmpty { throw SubscriptionError.NoServers }
         return SubscriptionResult(profiles, parseInfo(json))
     }
+
+    private val PAGE_IKEV2 = Regex("""<script type="application/json" id="tifusi-ikev2">(.*?)</script>""", RegexOption.DOT_MATCHES_ALL)
+
+    /**
+     * The IKEv2 login another panel's subscription page publishes for this app (the PasarGuard
+     * IKEv2 add-on puts it there), fetched as the page a browser would get. Null when there is none.
+     */
+    private fun pageIkev2(url: String): JSONObject? = runCatching {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.connectTimeout = TIMEOUT_MS
+        connection.readTimeout = TIMEOUT_MS
+        connection.setRequestProperty("Accept", "text/html")
+        connection.setRequestProperty("User-Agent", "TifusiVPN-Android")
+        try {
+            if (connection.responseCode !in 200..299) return null
+            // The login sits at the top of the page, which can be over a megabyte on the whole: read
+            // only the start, so a slow mobile link neither waits for nor fails on the rest.
+            val head = StringBuilder()
+            connection.inputStream.bufferedReader().use { reader ->
+                val buffer = CharArray(8192)
+                while (head.length < PAGE_HEAD_LIMIT) {
+                    val n = reader.read(buffer)
+                    if (n < 0) break
+                    head.append(buffer, 0, n)
+                    if ("</script>" in head && PAGE_IKEV2.containsMatchIn(head)) break
+                }
+            }
+            val raw = PAGE_IKEV2.find(head)?.groupValues?.get(1) ?: return null
+            JSONObject(raw).takeIf { it.optString("type") == "ikev2" && it.optString("server").isNotBlank() }
+        } finally {
+            connection.disconnect()
+        }
+    }.getOrNull()
 
     private class HttpResult(val status: Int, val body: String, val userinfo: String?)
 
@@ -317,4 +351,5 @@ object SubscriptionClient {
         if (has(key) && !isNull(key)) optString(key).takeIf { it.isNotBlank() } else null
 
     private const val TIMEOUT_MS = 15_000
+    private const val PAGE_HEAD_LIMIT = 256 * 1024
 }

@@ -53,12 +53,30 @@ class VpnProfileRepository(private val context: Context) {
         context.dataStore.edit { prefs -> prefs[selectedProfileIdKey] = profileId }
     }
 
+    /** Forgets the subscription: its servers, link and usage; manual profiles stay. */
+    suspend fun removeSubscription() {
+        context.dataStore.edit { prefs ->
+            val current = prefs[profilesKey]?.let { decodeProfiles(it) } ?: emptyList()
+            prefs[profilesKey] = encodeProfiles(current.filterNot { it.id.startsWith(SubscriptionClient.ID_PREFIX) })
+            if (prefs[selectedProfileIdKey]?.startsWith(SubscriptionClient.ID_PREFIX) == true) prefs.remove(selectedProfileIdKey)
+            prefs.remove(subscriptionUrlKey)
+            prefs.remove(subscriptionInfoKey)
+        }
+    }
+
     /** Swaps in a subscription's current servers, keeping manually added profiles untouched. */
     suspend fun replaceSubscriptionProfiles(url: String, result: SubscriptionResult) {
         context.dataStore.edit { prefs ->
             val current = prefs[profilesKey]?.let { decodeProfiles(it) } ?: emptyList()
             val manual = current.filterNot { it.id.startsWith(SubscriptionClient.ID_PREFIX) }
-            prefs[profilesKey] = encodeProfiles(manual + result.profiles)
+            // Another panel's page supplies IKEv2 separately; a refresh that could not read it
+            // (a slow link, a timeout) keeps the IKEv2 already saved instead of dropping it.
+            val keptIkev2 = if (result.profiles.none { it.protocol == VpnProtocol.IKEV2 }) {
+                current.filter { it.id.startsWith(SubscriptionClient.ID_PREFIX) && it.protocol == VpnProtocol.IKEV2 }
+            } else {
+                emptyList()
+            }
+            prefs[profilesKey] = encodeProfiles(manual + keptIkev2 + result.profiles)
             prefs[subscriptionUrlKey] = url
             prefs[subscriptionInfoKey] = result.info.toJson()
         }

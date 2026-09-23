@@ -189,4 +189,11 @@
     <string name="protocol_hysteria2_tagline">UDP، برای شبکه‌ای که TCP رویش کند است</string>
     <string name="field_hysteria2_link">لینک hysteria2://</string>
     <string name="notification_hy2_active">Hysteria2 فعال است</string>
+    <string name="ping_all">پینگ همه</string>
+    <string name="servers_hint">برای انتخاب بزن</string>
+    <string name="group_subscription">اشتراک</string>
+    <string name="group_manual">دستی</string>
+    <string name="subscription_update">به‌روزرسانی اشتراک</string>
+    <string name="subscription_remove">حذف اشتراک</string>
+    <string name="subscription_remove_confirm">اشتراک و همه‌ی سرورهایش حذف شود؟</string>
 </resources>

@@ -54,6 +54,14 @@ class SubscriptionViewModel(application: Application) : AndroidViewModel(applica
         _state.value.savedLink?.let(::load)
     }
 
+    fun remove() {
+        if (_state.value.isLoading) return
+        viewModelScope.launch {
+            repository.removeSubscription()
+            _state.update { it.copy(link = "", message = null) }
+        }
+    }
+
     private fun load(link: String) {
         if (_state.value.isLoading) return
         _state.update { it.copy(isLoading = true, message = null) }

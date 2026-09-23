@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.NetworkPing
 import androidx.compose.material3.Divider
@@ -41,9 +39,12 @@ fun StatusCard(
     serverName: String?,
     serverLocation: String?,
     flagEmoji: String?,
-    downloadLabel: String,
-    uploadLabel: String,
     speedLabel: String,
+    /** Live speeds and the tunnel's totals for the LED meter; null while disconnected. */
+    downloadBytesPerSec: Long?,
+    uploadBytesPerSec: Long?,
+    downloadTotal: Long?,
+    uploadTotal: Long?,
     /** Tapping the latency re-measures it at once; null leaves it read-only. */
     onSpeedClick: (() -> Unit)? = null,
     /** Days and data left on the subscription; null hides the row. */
@@ -116,21 +117,21 @@ fun StatusCard(
 
         Divider(color = TifusiCardBorder)
 
-        // Equal thirds, so a long value in one slot ("12.5 Mbps", a failure message) can never push
-        // its neighbours together. Latency gets its own icon: under the speedometer it read as a
-        // third speed figure.
-        Row(modifier = Modifier.fillMaxWidth()) {
-            TrafficStat(Icons.Default.ArrowDownward, downloadLabel, Modifier.weight(1f))
-            TrafficStat(Icons.Default.ArrowUpward, uploadLabel, Modifier.weight(1f))
-            TrafficStat(
-                Icons.Default.NetworkPing,
-                speedLabel,
-                Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .then(if (onSpeedClick != null) Modifier.clickable(onClick = onSpeedClick) else Modifier),
-            )
-        }
+        TrafficMeter(
+            downloadBytesPerSec = downloadBytesPerSec,
+            uploadBytesPerSec = uploadBytesPerSec,
+            downloadTotal = downloadTotal,
+            uploadTotal = uploadTotal,
+        )
+
+        // Latency keeps its own line: tapping it measures again.
+        TrafficStat(
+            Icons.Default.NetworkPing,
+            speedLabel,
+            Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .then(if (onSpeedClick != null) Modifier.clickable(onClick = onSpeedClick) else Modifier),
+        )
 
         quotaLabel?.let {
             Text(

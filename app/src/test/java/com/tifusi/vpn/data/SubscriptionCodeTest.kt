@@ -59,4 +59,12 @@ class SubscriptionCodeTest {
         assertEquals(1000L, json.getLong("data_limit"))
         assertEquals(1893456000L, json.getLong("expire"))
     }
+
+    @Test
+    fun otherPanelLinksAreKeptAsTheyAre() {
+        val pasarguard = "https://talalinks.example.ir/blog/djMsOTY2NSwxNzkw.Huvq147LRr6_nNOXj3gT"
+        assertEquals(pasarguard, SubscriptionClient.normalize(pasarguard))
+        assertEquals("https://p.example.com/sub/abcdefghijklmnop", SubscriptionClient.normalize("https://p.example.com/sub/abcdefghijklmnop/"))
+        assertNull(SubscriptionClient.normalize("https://example.com"))
+    }
 }

@@ -78,6 +78,9 @@ object SubscriptionClient {
 
     private val LINK = Regex("""^(https?://\S+?)/sub/([A-Za-z0-9-]{16,})/?(?:[?#]\S*)?$""", RegexOption.IGNORE_CASE)
 
+    /** Another panel's subscription link (PasarGuard, Marzban, …), read as a standard subscription. */
+    private val OTHER_LINK = Regex("""^https?://[^\s/?#]+/\S+$""", RegexOption.IGNORE_CASE)
+
     /**
      * Resolves a pasted link, or a code read out from the panel, to the panel endpoint base. The
      * app carries no panel address of its own: a code from the panel has its host in it (see
@@ -88,6 +91,7 @@ object SubscriptionClient {
     fun normalize(input: String): String? {
         val value = input.trim()
         LINK.matchEntire(value)?.let { return "${it.groupValues[1]}/sub/${it.groupValues[2]}" }
+        if (OTHER_LINK.matches(value)) return value
         if ("://" in value || value.any { it.isWhitespace() || it == '/' }) return null
         val at = value.lastIndexOf('@')
         val typed = if (at >= 0) value.substring(0, at) else value
@@ -142,6 +146,8 @@ object SubscriptionClient {
     /** Blocking network call; invoke off the main thread. */
     fun fetchProfiles(context: Context, link: String): SubscriptionResult {
         val normalized = normalize(link) ?: throw SubscriptionError.NotASubscriptionLink
+        // Not a Tifusi Panel link: there is no app.json to ask for, only the standard subscription.
+        if (!LINK.matches(normalized) && "/code/" !in normalized) return fetchStandard(normalized)
         // A stable per-install id, so the panel's device limit counts this phone once even as
         // its mobile IP changes between refreshes.
         val hwid = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
@@ -162,7 +168,11 @@ object SubscriptionClient {
         }
         // Not this project's panel, or one that predates app.json. The app is not tied to one
         // panel, so fall back to the standard subscription every panel serves at /sub/<token>.
-        val plain = httpGet(standardUrl(normalized), "*/*")
+        return fetchStandard(standardUrl(normalized))
+    }
+
+    private fun fetchStandard(url: String): SubscriptionResult {
+        val plain = httpGet(url, "*/*")
         if (plain.status !in 200..299) throw SubscriptionError.PanelOutdated
         val json = standardSubscriptionJson(plain.body, plain.userinfo)
         val profiles = parseProfiles(json).ifEmpty { throw SubscriptionError.NoServers }

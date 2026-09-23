@@ -47,11 +47,11 @@ import com.tifusi.vpn.vpn.Hysteria2Link
 import com.tifusi.vpn.vpn.VlessLink
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProtocol
+import com.tifusi.vpn.vpn.XrayProbe
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.net.InetSocketAddress
-import java.net.Socket
 
 private val PingAmber = Color(0xFFFFB300)
 
@@ -78,6 +78,7 @@ fun ServersScreen(
     var confirmRemoveSubscription by remember { mutableStateOf(false) }
     val pings = remember { mutableStateMapOf<String, Long>() }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     val open = rememberSaveable { mutableStateOf(setOf("sub", "ikev2", "manual")) }
 
     val fromSubscription = profiles.filter { it.id.startsWith(SubscriptionClient.ID_PREFIX) && it.protocol != VpnProtocol.IKEV2 }
@@ -85,11 +86,18 @@ fun ServersScreen(
     val manual = profiles.filter { !it.id.startsWith(SubscriptionClient.ID_PREFIX) && it.protocol != VpnProtocol.IKEV2 }
 
     fun pingAll() {
-        profiles.forEach { profile ->
-            val target = endpoint(profile) ?: return@forEach
-            if (!pingable(profile)) return@forEach
-            pings[profile.id] = PING_RUNNING
-            scope.launch { pings[profile.id] = withContext(Dispatchers.IO) { tcpPing(target.first, target.second) } }
+        val targets = profiles.filter { pingable(it) }
+        targets.forEach { pings[it.id] = PING_RUNNING }
+        // A few at a time: each one starts its own Xray instance.
+        val gate = kotlinx.coroutines.sync.Semaphore(4)
+        targets.forEach { profile ->
+            scope.launch {
+                pings[profile.id] = gate.withPermit {
+                    withContext(Dispatchers.IO) {
+                        XrayProbe.delayMs(context, profile.vlessLink.orEmpty()) ?: PING_TIMEOUT
+                    }
+                }
+            }
         }
     }
 
@@ -556,17 +564,8 @@ private fun endpoint(profile: VpnProfile): Pair<String, Int>? = when (profile.pr
     VpnProtocol.IKEV2 -> profile.serverAddress to 4500
 }
 
-/** TCP only: Hysteria2 and IKEv2 are UDP, where a connect time means nothing. */
+/** Measured through Xray, so VLESS only; Hysteria2 and IKEv2 run outside it. */
 private fun pingable(profile: VpnProfile) = profile.protocol == VpnProtocol.VLESS
-
-/** Time to open a TCP connection, the usual "ping" of proxy apps; [PING_TIMEOUT] on failure. */
-private fun tcpPing(host: String, port: Int): Long = runCatching {
-    Socket().use { socket ->
-        val start = System.nanoTime()
-        socket.connect(InetSocketAddress(host, port), 3000)
-        ((System.nanoTime() - start) / 1_000_000).coerceAtLeast(1)
-    }
-}.getOrDefault(PING_TIMEOUT)
 
 /** The first flag emoji (a pair of regional indicator letters) in a server's name. */
 private fun flagIn(text: String): String? {

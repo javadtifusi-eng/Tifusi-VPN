@@ -54,6 +54,7 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 private val PingAmber = Color(0xFFFFB300)
 
@@ -90,13 +91,17 @@ fun ServersScreen(
     fun pingAll() {
         val targets = profiles.filter { pingable(it) }
         targets.forEach { pings[it.id] = PING_RUNNING }
-        // A few at a time: each one starts its own Xray instance.
-        val gate = kotlinx.coroutines.sync.Semaphore(4)
+        // Two at a time, not more: each probe spins up its own Xray instance, and on a low-end
+        // phone running several at once starves the UI (and any live tunnel). A per-probe timeout
+        // frees the slot so one dead server never blocks the queue.
+        val gate = kotlinx.coroutines.sync.Semaphore(2)
         targets.forEach { profile ->
             scope.launch {
                 pings[profile.id] = gate.withPermit {
                     withContext(Dispatchers.IO) {
-                        XrayProbe.delayMs(context, profile.vlessLink.orEmpty()) ?: PING_TIMEOUT
+                        withTimeoutOrNull(8_000) {
+                            XrayProbe.delayMs(context, profile.vlessLink.orEmpty())
+                        } ?: PING_TIMEOUT
                     }
                 }
             }

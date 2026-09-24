@@ -188,8 +188,11 @@ object SubscriptionClient {
      */
     private fun pageIkev2(url: String): JSONObject? = runCatching {
         val connection = URL(url).openConnection() as HttpURLConnection
-        connection.connectTimeout = TIMEOUT_MS
-        connection.readTimeout = TIMEOUT_MS
+        // This extra fetch is best-effort and only adds IKEv2, so it uses a short timeout: it must
+        // never hold up the whole subscription refresh (or make the panel look unreachable) when the
+        // page is slow. A failure here just means no IKEv2 this time; the servers still import.
+        connection.connectTimeout = PAGE_TIMEOUT_MS
+        connection.readTimeout = PAGE_TIMEOUT_MS
         connection.setRequestProperty("Accept", "text/html")
         connection.setRequestProperty("User-Agent", "TifusiVPN-Android")
         try {
@@ -351,5 +354,7 @@ object SubscriptionClient {
         if (has(key) && !isNull(key)) optString(key).takeIf { it.isNotBlank() } else null
 
     private const val TIMEOUT_MS = 15_000
+    // The best-effort IKEv2-from-page fetch: kept short so it can't stall a refresh.
+    private const val PAGE_TIMEOUT_MS = 4_000
     private const val PAGE_HEAD_LIMIT = 256 * 1024
 }

@@ -20,14 +20,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.tifusi.vpn.ui.components.InfoCell
 import com.tifusi.vpn.ui.profile.openTelegram
 import com.tifusi.vpn.ui.profile.telegramUsername
 import com.tifusi.vpn.ui.theme.TifusiNeonBlue
 import com.tifusi.vpn.ui.theme.TifusiNeonBlueDeep
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -148,10 +146,6 @@ fun ServicesScreen() {
         }
 
         BlackCard {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                InfoCell(stringResource(R.string.about_android), "${Build.VERSION.RELEASE} · API ${Build.VERSION.SDK_INT}", Modifier.weight(1f))
-                InfoCell(stringResource(R.string.about_arch), Build.SUPPORTED_ABIS.firstOrNull() ?: "—", Modifier.weight(1f))
-            }
             Text(
                 stringResource(if (ikev2Supported) R.string.android_version_note_ok else R.string.ikev2_unsupported_version),
                 color = if (ikev2Supported) TifusiNeonGreen else MaterialTheme.colorScheme.error,
@@ -197,18 +191,18 @@ private fun ContactTile(icon: androidx.compose.ui.graphics.vector.ImageVector, t
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(TifusiSurface)
-            .border(1.dp, TifusiCardBorder, RoundedCornerShape(16.dp))
+            .border(1.dp, TifusiCardBorder, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Color.White), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = Color.Black)
+        Box(Modifier.size(28.dp).clip(RoundedCornerShape(9.dp)).background(Color.White), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
         }
-        Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).padding(start = 12.dp))
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TifusiTextSecondary)
+        Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f).padding(start = 10.dp))
+        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TifusiTextSecondary, modifier = Modifier.size(18.dp))
     }
 }
 

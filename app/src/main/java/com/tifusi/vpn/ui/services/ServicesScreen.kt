@@ -1,6 +1,5 @@
 package com.tifusi.vpn.ui.services
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
@@ -15,8 +14,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -103,25 +100,6 @@ fun ServicesScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        BlackCard(horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(
-                painter = painterResource(R.drawable.ic_logo_mark),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(Color.White),
-                modifier = Modifier.size(width = 86.dp, height = 47.dp),
-            )
-            Text("TIFUSI", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, letterSpacing = 6.sp)
-            Text(
-                stringResource(R.string.app_version, BuildConfig.VERSION_NAME),
-                color = TifusiTextSecondary,
-                fontSize = 12.sp,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(99.dp))
-                    .border(1.dp, TifusiCardBorder, RoundedCornerShape(99.dp))
-                    .padding(horizontal = 12.dp, vertical = 3.dp),
-            )
-        }
-
         if (UpdateChecker.isEnabled) {
             BlackCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {

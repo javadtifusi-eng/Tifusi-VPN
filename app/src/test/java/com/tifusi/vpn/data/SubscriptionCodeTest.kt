@@ -40,7 +40,7 @@ class SubscriptionCodeTest {
         assertEquals("a.b.example:8443", SubscriptionClient.decodeBase32("MEXGELTFPBQW24DMMU5DQNBUGM"))
     }
 
-    private val vless = "vless://6e755007-0a65-4e12-859e-000000000000@example.com:443?type=tcp#one"
+    private val vless = "vless://6e755007-0a65-4e12-859e-000000000000@example.com:443?type=tcp&security=tls&sni=example.com#one"
     private val hysteria2 = "hysteria2://1aa9268a-4c1f-48e0-90be-31c9df02dd6e@example.com:8801?sni=example.com#two"
 
     @Test

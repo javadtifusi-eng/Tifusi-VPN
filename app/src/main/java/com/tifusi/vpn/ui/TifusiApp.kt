@@ -38,6 +38,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.tifusi.vpn.BuildConfig
 import com.tifusi.vpn.R
 import com.tifusi.vpn.ui.home.HomeScreen
 import com.tifusi.vpn.ui.home.HomeViewModel
@@ -101,6 +102,11 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = TifusiBackground),
                 actions = {
+                    Text(
+                        "v${BuildConfig.VERSION_NAME}",
+                        color = TifusiTextSecondary,
+                        fontSize = 11.sp,
+                    )
                     IconButton(onClick = { navController.navigateToTab(TifusiDestination.PROFILE) }) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
                     }

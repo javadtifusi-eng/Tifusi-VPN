@@ -44,6 +44,7 @@ import com.tifusi.vpn.ui.theme.TifusiSurface
 import com.tifusi.vpn.ui.theme.TifusiSurfaceVariant
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
 import com.tifusi.vpn.vpn.Hysteria2Link
+import com.tifusi.vpn.vpn.IkeProbe
 import com.tifusi.vpn.vpn.VlessLink
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProtocol
@@ -97,7 +98,10 @@ fun ServersScreen(
         val gate = kotlinx.coroutines.sync.Semaphore(2)
         targets.forEach { profile ->
             scope.launch {
-                pings[profile.id] = gate.withPermit {
+                // IKEv2 is one small UDP exchange, so it skips the Xray queue.
+                pings[profile.id] = if (profile.protocol == VpnProtocol.IKEV2) {
+                    withContext(Dispatchers.IO) { IkeProbe.delayMs(profile.serverAddress) } ?: PING_TIMEOUT
+                } else gate.withPermit {
                     withContext(Dispatchers.IO) {
                         withTimeoutOrNull(8_000) {
                             XrayProbe.delayMs(context, profile.vlessLink.orEmpty())
@@ -554,6 +558,6 @@ private fun endpoint(profile: VpnProfile): Pair<String, Int>? = when (profile.pr
     VpnProtocol.IKEV2 -> profile.serverAddress to 4500
 }
 
-/** Measured through Xray, so VLESS only; Hysteria2 and IKEv2 run outside it. */
-private fun pingable(profile: VpnProfile) = profile.protocol == VpnProtocol.VLESS
+/** VLESS through Xray, IKEv2 by its daemon's answer; Hysteria2 runs outside both. */
+private fun pingable(profile: VpnProfile) = profile.protocol == VpnProtocol.VLESS || profile.protocol == VpnProtocol.IKEV2
 

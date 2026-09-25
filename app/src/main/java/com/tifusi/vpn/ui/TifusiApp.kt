@@ -1,136 +1,90 @@
 package com.tifusi.vpn.ui
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Dns
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.tifusi.vpn.BuildConfig
 import com.tifusi.vpn.R
 import com.tifusi.vpn.ui.home.HomeScreen
 import com.tifusi.vpn.ui.home.HomeViewModel
-import com.tifusi.vpn.ui.profile.ProfileScreen
 import com.tifusi.vpn.ui.servers.AddServerScreen
 import com.tifusi.vpn.ui.servers.AddServerViewModel
 import com.tifusi.vpn.ui.servers.ScanQrScreen
 import com.tifusi.vpn.ui.servers.ServersScreen
 import com.tifusi.vpn.ui.servers.SubscriptionViewModel
-import com.tifusi.vpn.ui.services.ServicesScreen
+import com.tifusi.vpn.ui.settings.DnsSettingsPage
+import com.tifusi.vpn.ui.settings.RouteSettingsPage
+import com.tifusi.vpn.ui.settings.SettingsPage
+import com.tifusi.vpn.ui.settings.SettingsScreen
+import com.tifusi.vpn.ui.settings.SpeedTestPage
+import com.tifusi.vpn.ui.settings.SubscriptionInfoPage
+import com.tifusi.vpn.ui.settings.SubscriptionSettingsPage
+import com.tifusi.vpn.ui.settings.TunnelSettingsPage
+import com.tifusi.vpn.ui.theme.AccentCyan
 import com.tifusi.vpn.ui.theme.TifusiBackground
-import com.tifusi.vpn.ui.theme.TifusiNeonBlue
-import com.tifusi.vpn.ui.theme.TifusiSurface
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
 
-private enum class TifusiDestination(
+internal enum class TifusiDestination(
     val route: String,
     val labelRes: Int,
     val icon: ImageVector,
 ) {
-    HOME("home", R.string.nav_home, Icons.Default.Home),
-    SERVERS("servers", R.string.nav_servers, Icons.Default.Dns),
-    PROFILE("profile", R.string.nav_profile, Icons.Default.Person),
-    SERVICES("services", R.string.nav_services, Icons.Default.Description),
+    HOME("home", R.string.nav_home, Icons.Outlined.Home),
+    CONFIGS("configs", R.string.nav_configs, Icons.AutoMirrored.Filled.FormatListBulleted),
+    SETTINGS("settings", R.string.settings, Icons.Outlined.Settings),
 }
 
 private const val ROUTE_ADD_SERVER = "add_server"
 private const val ROUTE_SCAN_QR = "scan_qr"
+private fun pageRoute(page: SettingsPage) = "settings/${page.name.lowercase()}"
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TifusiApp(homeViewModel: HomeViewModel) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
-    // Activity-scoped so the Servers tab can hand a profile to the edit form.
+    // Activity-scoped so the Configs tab can hand a profile to the edit form.
     val addServerViewModel: AddServerViewModel = viewModel()
     val subscriptionViewModel: SubscriptionViewModel = viewModel()
     val subscriptionState by subscriptionViewModel.state.collectAsStateWithLifecycle()
+    val back: () -> Unit = { navController.popBackStack() }
 
     Scaffold(
         containerColor = TifusiBackground,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Image(
-                            painter = painterResource(R.drawable.ic_logo_mark),
-                            contentDescription = stringResource(R.string.app_name),
-                            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(androidx.compose.ui.graphics.Color.White),
-                            modifier = Modifier.size(width = 48.dp, height = 26.dp),
-                        )
-                        Text(
-                            text = "TIFUSI",
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                            fontSize = 11.sp,
-                            letterSpacing = 4.sp,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = TifusiBackground),
-                actions = {
-                    Text(
-                        "v${BuildConfig.VERSION_NAME}",
-                        color = TifusiTextSecondary,
-                        fontSize = 11.sp,
-                    )
-                    IconButton(onClick = { navController.navigateToTab(TifusiDestination.PROFILE) }) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
-                    }
-                },
-            )
-        },
         bottomBar = {
-            NavigationBar(containerColor = TifusiSurface) {
-                TifusiDestination.entries.forEach { destination ->
-                    NavigationBarItem(
-                        selected = currentRoute == destination.route,
-                        onClick = { navController.navigateToTab(destination) },
-                        icon = { Icon(destination.icon, contentDescription = null) },
-                        label = { Text(stringResource(destination.labelRes)) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = TifusiNeonBlue,
-                            selectedTextColor = TifusiNeonBlue,
-                            unselectedIconColor = TifusiTextSecondary,
-                            unselectedTextColor = TifusiTextSecondary,
-                            indicatorColor = TifusiSurface,
-                        ),
-                    )
-                }
-            }
+            BottomBar(
+                current = TifusiDestination.entries.firstOrNull { currentRoute == it.route || currentRoute?.startsWith(it.route + "/") == true },
+                onSelect = { navController.navigateToTab(it) },
+            )
         },
     ) { innerPadding ->
         NavHost(
@@ -142,14 +96,12 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                 HomeScreen(
                     state = homeState,
                     onToggleConnection = homeViewModel::toggleConnection,
-                    onSelectProtocol = homeViewModel::selectProtocol,
-                    onServerClick = { navController.navigateToTab(TifusiDestination.SERVERS) },
+                    onOpenRouting = { navController.navigate(pageRoute(SettingsPage.ROUTE)) },
                     onDismissMessage = homeViewModel::dismissMessage,
-                    onRetestLatency = homeViewModel::retestLatency,
                 )
             }
 
-            composable(TifusiDestination.SERVERS.route) {
+            composable(TifusiDestination.CONFIGS.route) {
                 ServersScreen(
                     profiles = homeState.profiles,
                     selectedProfileId = homeState.selectedProfile?.id,
@@ -180,19 +132,57 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                         subscriptionViewModel.importLink()
                         navController.popBackStack()
                     },
-                    onCancel = { navController.popBackStack() },
+                    onCancel = back,
                 )
             }
 
-            composable(TifusiDestination.PROFILE.route) { ProfileScreen(subscription = homeState.subscriptionInfo) }
-
-            composable(TifusiDestination.SERVICES.route) { ServicesScreen() }
+            composable(TifusiDestination.SETTINGS.route) {
+                SettingsScreen(onOpen = { navController.navigate(pageRoute(it)) })
+            }
+            composable(pageRoute(SettingsPage.SUBSCRIPTION_INFO)) { SubscriptionInfoPage(homeState.subscriptionInfo, back) }
+            composable(pageRoute(SettingsPage.TUNNEL)) { TunnelSettingsPage(back) }
+            composable(pageRoute(SettingsPage.DNS)) { DnsSettingsPage(back) }
+            composable(pageRoute(SettingsPage.ROUTE)) { RouteSettingsPage(back) }
+            composable(pageRoute(SettingsPage.SPEED)) { SpeedTestPage(back) }
+            composable(pageRoute(SettingsPage.SUBSCRIPTION)) {
+                SubscriptionSettingsPage(
+                    state = subscriptionState,
+                    onLinkChange = subscriptionViewModel::onLinkChange,
+                    onImport = subscriptionViewModel::importLink,
+                    onRefresh = subscriptionViewModel::refresh,
+                    onScanQr = { navController.navigate(ROUTE_SCAN_QR) },
+                    onBack = back,
+                )
+            }
 
             composable(ROUTE_ADD_SERVER) {
-                AddServerScreen(
-                    viewModel = addServerViewModel,
-                    onDone = { navController.popBackStack() },
-                )
+                AddServerScreen(viewModel = addServerViewModel, onDone = back)
+            }
+        }
+    }
+}
+
+@Composable
+internal fun BottomBar(current: TifusiDestination?, onSelect: (TifusiDestination) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(TifusiBackground)
+            .navigationBarsPadding()
+            .padding(top = 8.dp, bottom = 10.dp),
+        horizontalArrangement = Arrangement.SpaceAround,
+    ) {
+        TifusiDestination.entries.forEach { destination ->
+            val color = if (destination == current) AccentCyan else TifusiTextSecondary
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onSelect(destination) }
+                    .padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(destination.icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+                Text(stringResource(destination.labelRes), color = color, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
             }
         }
     }

@@ -14,10 +14,10 @@ class XrayConfigTest {
     fun realityConfigHasTunInboundProxyAndRouting() {
         val json = JSONObject(build("reality", VlessLinkTest.REALITY_LINK))
 
-        assertEquals("warning", json.getJSONObject("log").getString("loglevel"))
+        assertEquals("none", json.getJSONObject("log").getString("loglevel"))
 
         val inbounds = json.getJSONArray("inbounds")
-        assertEquals(1, inbounds.length())
+        assertEquals(2, inbounds.length())
         val tun = inbounds.getJSONObject(0)
         assertEquals("tun", tun.getString("protocol"))
         assertEquals(XrayConfig.TAG_TUN, tun.getString("tag"))

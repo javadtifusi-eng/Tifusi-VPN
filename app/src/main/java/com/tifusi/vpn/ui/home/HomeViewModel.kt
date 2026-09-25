@@ -139,6 +139,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            while (true) {
+                // PSS of this process: the Xray core runs in it, so this is what the tunnel costs.
+                val bytes = runCatching { android.os.Debug.getPss() * 1024 }.getOrNull()
+                _uiState.update { it.copy(memoryBytes = bytes) }
+                delay(MEMORY_INTERVAL_MS)
+            }
+        }
     }
 
     override fun onCleared() {
@@ -255,6 +264,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val TICK_INTERVAL_MS = 1000L
+        private const val MEMORY_INTERVAL_MS = 3_000L
         private const val INTERNET_CHECK_INTERVAL_MS = 15_000L
         private const val INTERNET_CHECK_TIMEOUT_MS = 8_000
         // Answers 204 with no body; the same endpoint Android itself uses for connectivity checks.
@@ -276,4 +286,6 @@ data class HomeUiState(
     /** Null after a check means traffic did not get through the tunnel. */
     val internetLatencyMs: Long? = null,
     val subscriptionInfo: SubscriptionInfo? = null,
+    /** This app's memory (the in-process core included), for the Home screen. */
+    val memoryBytes: Long? = null,
 )

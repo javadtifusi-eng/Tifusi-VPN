@@ -1,5 +1,10 @@
 package com.tifusi.vpn.vpn
 
+import com.tifusi.vpn.data.AppSettings
+import android.content.IntentFilter
+import android.content.BroadcastReceiver
+import com.tifusi.vpn.data.TunnelSettings
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -62,9 +67,37 @@ class XrayVpnService : VpnService() {
      */
     @Volatile private var latestStartId = 0
 
+    /**
+     * Stop on sleep: with the screen off the tunnel is torn down to save battery, and rebuilt for
+     * the same server when the screen comes back on. The service stays in the foreground meanwhile,
+     * so the app keeps showing the connection and nothing else has to restart it.
+     */
+    @Volatile private var sleeping = false
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_SCREEN_OFF -> if (AppSettings.load(context).stopOnSleep && tunnel != null) {
+                    sleeping = true
+                    worker.execute { if (sleeping) stopCore() }
+                }
+                Intent.ACTION_SCREEN_ON -> if (sleeping) {
+                    sleeping = false
+                    val link = lastSession(context)?.first ?: return
+                    val runId = currentRunId
+                    val startId = latestStartId
+                    worker.execute { if (runId == currentRunId && tunnel == null) startTunnel(runId, link, startId) }
+                }
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         instance = this
+        registerReceiver(screenReceiver, IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        })
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -99,6 +132,7 @@ class XrayVpnService : VpnService() {
     }
 
     override fun onDestroy() {
+        runCatching { unregisterReceiver(screenReceiver) }
         if (instance === this) instance = null
         // Destroyed without a stop (e.g. by the system): the core must not keep reading a descriptor
         // nobody owns, and the controller must stop showing "Connected".
@@ -122,6 +156,7 @@ class XrayVpnService : VpnService() {
         // Switching servers: the previous core and interface go first.
         stopCore()
 
+        val settings = AppSettings.load(this)
         val failure: String? = try {
             // Either way the server is resolved now, on the phone's own network: once the tunnel is
             // up the lookup would have to go through the tunnel it is building.
@@ -130,17 +165,17 @@ class XrayVpnService : VpnService() {
                 val serverIp = if (VlessLink.isIpLiteral(link.address)) link.address else resolve(link.address)
                 // Started before the interface exists, so a server that refuses us never gets a
                 // tunnel brought up only to be torn down again.
-                XrayConfig.buildForSocks(HysteriaClient.start(this, link, serverIp))
+                XrayConfig.buildForSocks(HysteriaClient.start(this, link, serverIp), settings)
             } else {
                 val link = VlessLink.parse(rawLink)
                 val serverAddress = if (VlessLink.isIpLiteral(link.address)) link.address else resolve(link.address)
-                XrayConfig.build(link, serverAddress)
+                XrayConfig.build(link, serverAddress, settings)
             }
 
             if (prepare(this) != null) {
                 "VPN permission was withdrawn"
             } else {
-                val fd = establishInterface()
+                val fd = establishInterface(settings)
                 if (fd == null) {
                     "Android refused to create the VPN interface (is another app set as always-on VPN?)"
                 } else {
@@ -180,17 +215,17 @@ class XrayVpnService : VpnService() {
         return chosen.hostAddress ?: throw IllegalStateException("Could not resolve server $host")
     }
 
-    private fun establishInterface(): ParcelFileDescriptor? {
+    private fun establishInterface(settings: TunnelSettings): ParcelFileDescriptor? {
         val builder = Builder()
             .setSession(getString(R.string.app_name))
-            .setMtu(XrayConfig.MTU)
+            .setMtu(settings.mtu)
             // v2rayNG's default interface addresses (VpnInterfaceAddressConfig.OPTION_1).
             .addAddress(TUN_ADDRESS_V4, 30)
             .addRoute("0.0.0.0", 0)
             // IPv6 is routed in too, so it cannot leak around the tunnel on dual-stack networks.
             .addAddress(TUN_ADDRESS_V6, 126)
             .addRoute("::", 0)
-        XrayConfig.DNS_SERVERS.forEach { builder.addDnsServer(it) }
+        settings.dnsServers.forEach { builder.addDnsServer(it) }
         builder.addDisallowedApplication(packageName)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) builder.setMetered(false)
         return builder.establish()
@@ -202,6 +237,7 @@ class XrayVpnService : VpnService() {
      * [startId] arrived; otherwise that newer start still needs the service in the foreground.
      */
     private fun stopTunnel(finalStatus: XrayStatus?, startId: Int) {
+        sleeping = false
         stopCore()
         if (finalStatus != null && finalStatus.runId == currentRunId) publish(finalStatus)
         if (stopSelfResult(startId)) {

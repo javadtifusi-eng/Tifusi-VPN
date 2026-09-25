@@ -1,20 +1,24 @@
 package com.tifusi.vpn.ui.servers
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,6 +29,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -36,12 +41,19 @@ import androidx.compose.ui.unit.sp
 import com.tifusi.vpn.R
 import com.tifusi.vpn.data.SubscriptionClient
 import com.tifusi.vpn.data.SubscriptionError
+import com.tifusi.vpn.ui.components.ScreenTitle
+import com.tifusi.vpn.ui.components.flagIn
+import com.tifusi.vpn.ui.components.protocolLabel
+import com.tifusi.vpn.ui.theme.AccentCyan
+import com.tifusi.vpn.ui.theme.PanelCard
+import com.tifusi.vpn.ui.theme.PingFast
+import com.tifusi.vpn.ui.theme.PingSlow
+import com.tifusi.vpn.ui.theme.ProtoGrey
+import com.tifusi.vpn.ui.theme.ProtoIkev2
 import com.tifusi.vpn.ui.theme.TifusiCardBorder
 import com.tifusi.vpn.ui.theme.TifusiNeonBlue
-import com.tifusi.vpn.ui.theme.TifusiNeonGreen
 import com.tifusi.vpn.ui.theme.TifusiNeonRed
 import com.tifusi.vpn.ui.theme.TifusiSurface
-import com.tifusi.vpn.ui.theme.TifusiSurfaceVariant
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
 import com.tifusi.vpn.vpn.Hysteria2Link
 import com.tifusi.vpn.vpn.IkeProbe
@@ -49,15 +61,11 @@ import com.tifusi.vpn.vpn.VlessLink
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProtocol
 import com.tifusi.vpn.vpn.XrayProbe
-import com.tifusi.vpn.ui.components.flagIn
-import com.tifusi.vpn.ui.components.protocolLabel
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-
-private val PingAmber = Color(0xFFFFB300)
 
 /** A ping result: null not measured yet, [PING_RUNNING] measuring, [PING_TIMEOUT] no answer. */
 private const val PING_RUNNING = -1L
@@ -82,7 +90,7 @@ fun ServersScreen(
     var confirmRemoveSubscription by remember { mutableStateOf(false) }
     val pings = remember { mutableStateMapOf<String, Long>() }
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val open = rememberSaveable { mutableStateOf(setOf("sub", "ikev2", "manual")) }
 
     val fromSubscription = profiles.filter { it.id.startsWith(SubscriptionClient.ID_PREFIX) && it.protocol != VpnProtocol.IKEV2 }
@@ -112,87 +120,92 @@ fun ServersScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Header(onScanQr = onScanQr, onAdd = onAddManually)
+    fun share(profile: VpnProfile) {
+        val link = profile.vlessLink ?: profile.hysteria2Link ?: return
+        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, link)
+        runCatching { context.startActivity(Intent.createChooser(send, null)) }
+    }
 
-        if (subscription.savedLink == null) {
-            SubscriptionCard(
-                state = subscription,
-                onLinkChange = onSubscriptionLinkChange,
-                onImport = onImportSubscription,
-                onRefresh = onRefreshSubscription,
-                onScanQr = onScanQr,
-            )
-        }
-
-        if (profiles.isEmpty()) {
-            Text(
-                text = stringResource(R.string.no_servers_yet),
-                style = MaterialTheme.typography.bodyLarge,
-                color = TifusiTextSecondary,
-            )
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.servers_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TifusiTextSecondary,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = ::pingAll) {
-                    Text(stringResource(R.string.ping_all), color = TifusiNeonBlue, fontWeight = FontWeight.SemiBold)
-                }
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopBar(
+            hasSubscription = subscription.savedLink != null,
+            onScanQr = onScanQr,
+            onAdd = onAddManually,
+            onPingAll = ::pingAll,
+            onRefresh = onRefreshSubscription,
+            onRemove = { confirmRemoveSubscription = true },
+        )
+        ScreenTitle(stringResource(R.string.configs_title), Modifier.padding(start = 22.dp, top = 4.dp, bottom = 10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.swipe_to_delete), color = TifusiTextSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f))
+            TextButton(onClick = ::pingAll) {
+                Text(stringResource(R.string.ping_all), color = AccentCyan, fontWeight = FontWeight.SemiBold)
             }
         }
 
-        val groups = listOf(
-            Triple("sub", stringResource(R.string.group_subscription), fromSubscription),
-            Triple("ikev2", "IKEv2", ikev2),
-            Triple("manual", stringResource(R.string.group_manual), manual),
-        ).filter { it.third.isNotEmpty() }
-        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            groups.forEach { (key, title, group) ->
-                val expanded = key in open.value
-                item(key = "head:$key") {
-                    GroupHeader(
-                        title = title,
-                        count = group.size,
-                        expanded = expanded,
-                        onToggle = { open.value = if (expanded) open.value - key else open.value + key },
-                    )
-                }
-                if (expanded && key == "sub") {
-                    item(key = "refresh") {
-                        RefreshButton(
-                            state = subscription,
-                            onRefresh = onRefreshSubscription,
-                            onRemove = { confirmRemoveSubscription = true },
+        Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (subscription.savedLink == null) {
+                SubscriptionCard(
+                    state = subscription,
+                    onLinkChange = onSubscriptionLinkChange,
+                    onImport = onImportSubscription,
+                    onRefresh = onRefreshSubscription,
+                    onScanQr = onScanQr,
+                )
+            } else {
+                SubscriptionStatus(subscription)
+            }
+
+            if (profiles.isEmpty()) {
+                Text(stringResource(R.string.no_servers_yet), style = MaterialTheme.typography.bodyLarge, color = TifusiTextSecondary)
+            }
+
+            val groups = listOf(
+                Triple("sub", stringResource(R.string.group_subscription) to stringResource(R.string.group_sub_hint), fromSubscription),
+                Triple("ikev2", "IKEv2" to stringResource(R.string.group_ikev2_hint), ikev2),
+                Triple("manual", stringResource(R.string.group_manual) to stringResource(R.string.group_local_hint), manual),
+            ).filter { it.third.isNotEmpty() }
+            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                groups.forEach { (key, titles, group) ->
+                    val expanded = key in open.value
+                    item(key = "head:$key") {
+                        GroupHeader(
+                            title = titles.first,
+                            hint = titles.second,
+                            count = group.size,
+                            expanded = expanded,
+                            isRefreshing = key == "sub" && subscription.isLoading,
+                            onRefresh = if (key == "sub") onRefreshSubscription else null,
+                            onToggle = { open.value = if (expanded) open.value - key else open.value + key },
                         )
                     }
-                }
-                if (expanded) {
-                    // Once measured, the fastest servers come first; unmeasured and timeouts last.
-                    val ordered = if (group.any { (pings[it.id] ?: 0L) > 0L }) {
-                        group.sortedBy { pings[it.id]?.takeIf { v -> v > 0L } ?: Long.MAX_VALUE }
-                    } else {
-                        group
+                    if (expanded) {
+                        // Once measured, the fastest servers come first; unmeasured and timeouts last.
+                        val ordered = if (group.any { (pings[it.id] ?: 0L) > 0L }) {
+                            group.sortedBy { pings[it.id]?.takeIf { v -> v > 0L } ?: Long.MAX_VALUE }
+                        } else {
+                            group
+                        }
+                        items(ordered, key = { it.id }) { profile ->
+                            SwipeToDelete(onDelete = { pendingDelete = profile }) {
+                                ServerRow(
+                                    profile = profile,
+                                    ping = pings[profile.id],
+                                    isSelected = profile.id == selectedProfileId,
+                                    onClick = { onSelectProfile(profile) },
+                                    onEdit = { onEditProfile(profile) },
+                                    onShare = if (profile.vlessLink != null || profile.hysteria2Link != null) {
+                                        { share(profile) }
+                                    } else null,
+                                )
+                            }
+                        }
                     }
-                    items(ordered, key = { it.id }) { profile ->
-                        ServerRow(
-                            profile = profile,
-                            ping = pings[profile.id],
-                            isSelected = profile.id == selectedProfileId,
-                            onClick = { onSelectProfile(profile) },
-                            onEdit = { onEditProfile(profile) },
-                            onDelete = { pendingDelete = profile },
-                        )
-                    }
                 }
+                item { Spacer(Modifier.height(8.dp)) }
             }
         }
     }
@@ -239,111 +252,113 @@ fun ServersScreen(
 }
 
 @Composable
-private fun Header(onScanQr: () -> Unit, onAdd: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun TopBar(
+    hasSubscription: Boolean,
+    onScanQr: () -> Unit,
+    onAdd: () -> Unit,
+    onPingAll: () -> Unit,
+    onRefresh: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    var menu by remember { mutableStateOf(false) }
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onScanQr) { Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.scan_qr_code), tint = Color.White) }
         Spacer(Modifier.weight(1f))
-        HeaderButton(Icons.Default.Add, stringResource(R.string.add_manually), onAdd)
+        IconButton(onClick = onAdd) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_manually), tint = Color.White) }
+        Box {
+            IconButton(onClick = { menu = true }) { Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.menu_more), tint = Color.White) }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.ping_all)) }, onClick = { menu = false; onPingAll() })
+                if (hasSubscription) {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.subscription_update)) }, onClick = { menu = false; onRefresh() })
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.subscription_remove), color = TifusiNeonRed) },
+                        onClick = { menu = false; onRemove() },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeToDelete(onDelete: () -> Unit, content: @Composable () -> Unit) {
+    val state = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            // The row springs back; deleting waits for the confirmation dialog.
+            if (value == SwipeToDismissBoxValue.EndToStart) onDelete()
+            false
+        },
+    )
+    SwipeToDismissBox(
+        state = state,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            Box(
+                Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(TifusiNeonRed.copy(alpha = 0.25f)).padding(horizontal = 18.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) { Text(stringResource(R.string.action_delete), color = TifusiNeonRed, fontWeight = FontWeight.SemiBold) }
+        },
+    ) { content() }
+}
+
+@Composable
+private fun SubscriptionStatus(state: SubscriptionUiState) {
+    when (val message = state.message) {
+        is SubscriptionMessage.Imported -> Text(
+            stringResource(R.string.subscription_imported, message.count),
+            color = AccentCyan,
+            style = MaterialTheme.typography.bodySmall,
+        )
+        is SubscriptionMessage.Failed -> Text(message.error.label(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        null -> Unit
     }
 }
 
 @Composable
-private fun HeaderButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(TifusiSurface)
-            .border(1.dp, TifusiCardBorder, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = label, tint = TifusiNeonBlue)
-    }
-}
-
-@Composable
-private fun GroupHeader(title: String, count: Int, expanded: Boolean, onToggle: () -> Unit) {
+private fun GroupHeader(
+    title: String,
+    hint: String,
+    count: Int,
+    expanded: Boolean,
+    isRefreshing: Boolean,
+    onRefresh: (() -> Unit)?,
+    onToggle: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(TifusiSurface)
-            .border(1.dp, TifusiCardBorder, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(PanelCard)
             .clickable(onClick = onToggle)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 15.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             Icons.Default.ExpandMore,
             contentDescription = null,
-            tint = TifusiNeonBlue,
-            modifier = Modifier.rotate(if (expanded) 0f else 90f),
+            tint = AccentCyan,
+            modifier = Modifier.rotate(if (expanded) 0f else -90f),
         )
-        Text(
-            "$title ($count)",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(start = 10.dp),
-        )
-    }
-}
-
-@Composable
-private fun RefreshButton(state: SubscriptionUiState, onRefresh: () -> Unit, onRemove: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .border(1.dp, TifusiNeonBlue.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
-                .clickable(enabled = !state.isLoading, onClick = onRefresh)
-                .padding(10.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (state.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = TifusiNeonBlue)
+        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+            Text("$title ($count)", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(hint, color = TifusiTextSecondary, fontSize = 11.5.sp)
+        }
+        if (onRefresh != null) {
+            if (isRefreshing) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = AccentCyan)
             } else {
-                Icon(Icons.Default.Refresh, contentDescription = null, tint = TifusiNeonBlue, modifier = Modifier.size(18.dp))
+                IconButton(onClick = onRefresh, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.subscription_update), tint = AccentCyan)
+                }
             }
-            Text(
-                stringResource(R.string.subscription_update),
-                color = TifusiNeonBlue,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 8.dp),
-            )
-        }
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .border(1.dp, TifusiNeonRed.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
-                .clickable(enabled = !state.isLoading, onClick = onRemove)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(stringResource(R.string.subscription_remove), color = TifusiNeonRed, fontWeight = FontWeight.SemiBold)
-        }
-      }
-        when (val message = state.message) {
-            is SubscriptionMessage.Imported -> Text(
-                stringResource(R.string.subscription_imported, message.count),
-                color = TifusiNeonBlue,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            is SubscriptionMessage.Failed -> Text(
-                message.error.label(),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            null -> Unit
         }
     }
 }
 
 @Composable
-private fun SubscriptionCard(
+internal fun SubscriptionCard(
     state: SubscriptionUiState,
     onLinkChange: (String) -> Unit,
     onImport: () -> Unit,
@@ -427,7 +442,7 @@ private fun SubscriptionCard(
 }
 
 @Composable
-private fun SubscriptionError.label(): String = when (this) {
+internal fun SubscriptionError.label(): String = when (this) {
     SubscriptionError.NotASubscriptionLink -> stringResource(R.string.sub_error_link)
     SubscriptionError.NotFound -> stringResource(R.string.sub_error_not_found)
     SubscriptionError.DeviceLimit -> stringResource(R.string.sub_error_device_limit)
@@ -443,90 +458,90 @@ private fun ServerRow(
     isSelected: Boolean,
     onClick: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onShare: (() -> Unit)?,
 ) {
-    var menu by remember { mutableStateOf(false) }
     val flag = profile.countryFlagEmoji ?: flagIn(profile.name)
     val name = profile.name.let { if (flag != null) it.replace(flag, "") else it }.trim().ifBlank { profile.serverAddress }
     val endpoint = endpoint(profile)
+    val label = protocolLabel(profile)
+    val (tabColor, tabText) = when (profile.protocol) {
+        VpnProtocol.VLESS -> AccentCyan to Color(0xFF00343C)
+        VpnProtocol.IKEV2 -> ProtoIkev2 to Color(0xFFEAFFF6)
+        VpnProtocol.HYSTERIA2 -> ProtoGrey to Color.White
+    }
 
-    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clip(RoundedCornerShape(12.dp))
+            .background(PanelCard)
+            .then(if (isSelected) Modifier.border(1.5.dp, AccentCyan, RoundedCornerShape(12.dp)) else Modifier)
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         // Protocol, written sideways down a narrow tab like V2Box.
         Box(
-            modifier = Modifier
-                .width(30.dp)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(10.dp))
-                .background(if (isSelected) TifusiNeonBlue else TifusiSurface)
-                .border(1.dp, if (isSelected) TifusiNeonBlue else TifusiCardBorder, RoundedCornerShape(10.dp)),
+            modifier = Modifier.width(30.dp).fillMaxHeight().background(tabColor),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                protocolLabel(profile),
-                color = if (isSelected) Color.Black else TifusiTextSecondary,
-                fontFamily = FontFamily.Monospace,
+                label,
+                color = tabText,
                 fontWeight = FontWeight.Bold,
                 fontSize = 10.sp,
-                letterSpacing = 1.sp,
+                letterSpacing = 0.5.sp,
                 maxLines = 1,
                 modifier = Modifier.vertical().rotate(-90f),
             )
         }
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(14.dp))
-                .background(if (isSelected) TifusiSurfaceVariant else TifusiSurface)
-                .border(1.dp, if (isSelected) TifusiNeonBlue else TifusiCardBorder, RoundedCornerShape(14.dp))
-                .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            flag?.let { Text(it, fontSize = 26.sp, modifier = Modifier.padding(end = 10.dp)) }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                listOfNotNull(name, flag).joinToString(" "),
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     endpoint?.let { "${it.first}:${it.second}" } ?: profile.serverAddress,
-                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 12.sp,
                     fontFamily = FontFamily.Monospace,
                     color = TifusiTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
+                PingPill(ping)
             }
-            PingPill(ping)
         }
-        Box(
-            modifier = Modifier
-                .width(36.dp)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(12.dp))
-                .background(TifusiSurface)
-                .border(1.dp, TifusiCardBorder, RoundedCornerShape(12.dp))
-                .clickable { menu = true },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.action_edit), tint = TifusiTextSecondary)
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.action_edit)) }, onClick = { menu = false; onEdit() })
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) },
-                    onClick = { menu = false; onDelete() },
-                )
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 10.dp)) {
+            RoundButton(Icons.Default.Edit, stringResource(R.string.action_edit), onEdit)
+            if (onShare != null) RoundButton(Icons.Default.Share, stringResource(R.string.action_share), onShare)
         }
     }
 }
 
 @Composable
+private fun RoundButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.size(32.dp).clip(CircleShape).background(ProtoGrey).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(16.dp))
+    }
+}
+
+@Composable
 private fun PingPill(ping: Long?) {
-    val (text, color) = when {
-        ping == null -> "—" to TifusiTextSecondary
-        ping == PING_RUNNING -> "…" to TifusiTextSecondary
-        ping == PING_TIMEOUT -> "timeout" to TifusiNeonRed
-        ping < 400 -> "${ping}ms" to TifusiNeonGreen
-        ping < 900 -> "${ping}ms" to PingAmber
-        else -> "${ping}ms" to TifusiNeonRed
+    val (text, background, color) = when {
+        ping == null -> Triple("—", Color(0xFF1C1C1F), TifusiTextSecondary)
+        ping == PING_RUNNING -> Triple("…", Color(0xFF1C1C1F), TifusiTextSecondary)
+        ping == PING_TIMEOUT -> Triple("timeout", TifusiNeonRed.copy(alpha = 0.22f), TifusiNeonRed)
+        ping < 900 -> Triple("${ping}ms", PingFast, Color(0xFFEAFFF6))
+        else -> Triple("${ping}ms", PingSlow, Color(0xFFF4F0D0))
     }
     Text(
         text,
@@ -536,10 +551,10 @@ private fun PingPill(ping: Long?) {
         fontSize = 11.sp,
         maxLines = 1,
         modifier = Modifier
-            .padding(start = 8.dp)
-            .clip(RoundedCornerShape(7.dp))
-            .background(if (ping == null || ping == PING_RUNNING) Color(0xFF1C1C1F) else color.copy(alpha = 0.14f))
-            .padding(horizontal = 7.dp, vertical = 3.dp),
+            .padding(start = 6.dp)
+            .clip(RoundedCornerShape(5.dp))
+            .background(background)
+            .padding(horizontal = 7.dp, vertical = 2.dp),
     )
 }
 

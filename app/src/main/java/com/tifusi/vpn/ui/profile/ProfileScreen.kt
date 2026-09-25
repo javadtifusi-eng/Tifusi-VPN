@@ -75,7 +75,7 @@ fun ProfileScreen(subscription: SubscriptionInfo?) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        subscription?.let { SubscriptionCard(it) }
+        subscription?.let { AccountCard(it) }
 
         SectionLabel(stringResource(R.string.language))
         Row(
@@ -116,7 +116,7 @@ fun ProfileScreen(subscription: SubscriptionInfo?) {
 
 /** The account at a glance: name, days and data left, as the panel last reported them. */
 @Composable
-private fun SubscriptionCard(info: SubscriptionInfo) {
+internal fun AccountCard(info: SubscriptionInfo) {
     val daysLeft = info.expireEpochSec?.let { ((it - System.currentTimeMillis() / 1000) / 86_400).coerceAtLeast(0) }
     Column(
         modifier = Modifier

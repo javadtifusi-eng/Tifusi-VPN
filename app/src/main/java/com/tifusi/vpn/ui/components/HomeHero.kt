@@ -1,5 +1,7 @@
 package com.tifusi.vpn.ui.components
 
+import com.tifusi.vpn.ui.theme.AccentGreen
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -144,31 +146,31 @@ fun SlideToConnect(
     val density = LocalDensity.current
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     var drag by remember { mutableFloatStateOf(0f) }
-    val barColor = if (isConnected) Color(0xFF0F2B1C) else Color(0xFFF2F2F2)
-    val textColor = if (isConnected) TifusiNeonGreen else Color(0xFF111111)
+    val barColor = if (isConnected) AccentGreen else Color.White
+    val textColor = if (isConnected) Color.White else Color.Black
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(58.dp)
-            .clip(RoundedCornerShape(30.dp))
+            .height(64.dp)
+            .clip(RoundedCornerShape(34.dp))
             .background(barColor)
             .then(if (isConnecting) Modifier.clickable(onClick = onToggle) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        val knob = with(density) { 48.dp.toPx() }
-        val travel = (constraints.maxWidth - knob - with(density) { 10.dp.toPx() }).coerceAtLeast(1f)
-        Text(label, color = textColor, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.alpha(1f - drag / travel))
+        val knob = with(density) { 50.dp.toPx() }
+        val travel = (constraints.maxWidth - knob - with(density) { 14.dp.toPx() }).coerceAtLeast(1f)
+        Text(label, color = textColor, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, modifier = Modifier.alpha(1f - drag / travel))
         // Disconnected: the knob waits at the start; connected: at the end.
         val rest = if (isConnected) travel else 0f
         val position = (if (isConnected) rest - drag else drag).coerceIn(0f, travel)
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .offset { IntOffset((with(density) { 5.dp.toPx() } + position).roundToInt(), 0) }
-                .size(48.dp)
+                .offset { IntOffset((with(density) { 7.dp.toPx() } + position).roundToInt(), 0) }
+                .size(50.dp)
                 .clip(CircleShape)
-                .background(if (isConnected) TifusiNeonGreen else Color.Black)
+                .background(if (isConnected) Color.White else Color.Black)
                 .pointerInput(isConnected, isConnecting, travel) {
                     if (isConnecting) return@pointerInput
                     detectHorizontalDragGestures(
@@ -187,9 +189,9 @@ fun SlideToConnect(
             contentAlignment = Alignment.Center,
         ) {
             if (isConnecting) {
-                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = Color.White)
+                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = if (isConnected) AccentGreen else Color.White)
             } else {
-                Text(if (rtl) "‹" else "›", color = if (isConnected) Color.Black else Color.White, fontSize = 22.sp)
+                Text(if (rtl) "‹" else "›", color = if (isConnected) AccentGreen else Color.White, fontSize = 22.sp)
             }
         }
     }

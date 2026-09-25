@@ -72,7 +72,7 @@ private sealed interface UpdateState {
 
 /** About: the app version with an update check, and what this particular device supports. */
 @Composable
-fun ServicesScreen() {
+fun AboutContent() {
     val context = LocalContext.current
     val ikev2Supported = Ikev2VpnManager.isSupported()
     val scope = rememberCoroutineScope()
@@ -94,11 +94,8 @@ fun ServicesScreen() {
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (UpdateChecker.isEnabled) {
             BlackCard {

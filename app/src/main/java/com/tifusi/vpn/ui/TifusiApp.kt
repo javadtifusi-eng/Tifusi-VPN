@@ -44,6 +44,7 @@ import com.tifusi.vpn.ui.settings.DnsSettingsPage
 import com.tifusi.vpn.ui.settings.RouteSettingsPage
 import com.tifusi.vpn.ui.settings.SettingsPage
 import com.tifusi.vpn.ui.settings.SettingsScreen
+import com.tifusi.vpn.ui.settings.PingSettingsPage
 import com.tifusi.vpn.ui.settings.SpeedTestPage
 import com.tifusi.vpn.ui.settings.SubscriptionInfoPage
 import com.tifusi.vpn.ui.settings.SubscriptionSettingsPage
@@ -144,6 +145,7 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
             composable(pageRoute(SettingsPage.DNS)) { DnsSettingsPage(back) }
             composable(pageRoute(SettingsPage.ROUTE)) { RouteSettingsPage(back) }
             composable(pageRoute(SettingsPage.SPEED)) { SpeedTestPage(back) }
+            composable(pageRoute(SettingsPage.PING)) { PingSettingsPage(back) }
             composable(pageRoute(SettingsPage.SUBSCRIPTION)) {
                 SubscriptionSettingsPage(
                     state = subscriptionState,

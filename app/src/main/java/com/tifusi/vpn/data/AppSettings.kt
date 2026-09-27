@@ -15,12 +15,29 @@ data class TunnelSettings(
     val dns: String = DNS_PRESETS.first().first,
     val bypassIran: Boolean = false,
     val mtu: Int = MTUS.first(),
+    // How the Configs list pings servers, as in V2Box: through the tunnel (connection), a TCP
+    // handshake with the server, or a plain ICMP echo to it.
+    val pingMethod: String = PING_METHODS.first(),
+    val pingTimeoutSec: Int = 5,
+    val pingConcurrency: Int = 5,
+    val pingEndpoint: String = PING_ENDPOINTS.first().first,
 ) {
     val dnsServers: List<String> get() = DNS_PRESETS.firstOrNull { it.first == dns }?.second ?: DNS_PRESETS.first().second
+    val pingUrl: String get() = PING_ENDPOINTS.firstOrNull { it.first == pingEndpoint }?.second ?: PING_ENDPOINTS.first().second
 
     companion object {
         val LOG_LEVELS = listOf("none", "error", "warning", "info", "debug")
         val MTUS = listOf(1500, 1400, 1280)
+        val PING_METHODS = listOf("connection", "tcp", "icmp")
+        val PING_TIMEOUTS = 1..10
+        val PING_CONCURRENCY = 1..15
+        // Endpoints that answer 204 (or a tiny page) with no body, for the connection test.
+        val PING_ENDPOINTS = listOf(
+            "google" to "https://www.google.com/generate_204",
+            "gstatic" to "https://www.gstatic.com/generate_204",
+            "cloudflare" to "https://cp.cloudflare.com/generate_204",
+            "apple" to "http://captive.apple.com/hotspot-detect.html",
+        )
         val DNS_PRESETS = listOf(
             "Google + Cloudflare" to listOf("8.8.8.8", "1.1.1.1"),
             "Cloudflare" to listOf("1.1.1.1", "1.0.0.1"),
@@ -48,6 +65,10 @@ object AppSettings {
                 dns = p.getString("dns", d.dns)!!,
                 bypassIran = p.getBoolean("bypass_iran", d.bypassIran),
                 mtu = p.getInt("mtu", d.mtu).takeIf { it in TunnelSettings.MTUS } ?: d.mtu,
+                pingMethod = p.getString("ping_method", d.pingMethod)!!.takeIf { it in TunnelSettings.PING_METHODS } ?: d.pingMethod,
+                pingTimeoutSec = p.getInt("ping_timeout", d.pingTimeoutSec).coerceIn(TunnelSettings.PING_TIMEOUTS),
+                pingConcurrency = p.getInt("ping_concurrency", d.pingConcurrency).coerceIn(TunnelSettings.PING_CONCURRENCY),
+                pingEndpoint = p.getString("ping_endpoint", d.pingEndpoint)!!.takeIf { e -> TunnelSettings.PING_ENDPOINTS.any { it.first == e } } ?: d.pingEndpoint,
             )
             loaded = true
         }
@@ -63,6 +84,10 @@ object AppSettings {
             .putString("dns", next.dns)
             .putBoolean("bypass_iran", next.bypassIran)
             .putInt("mtu", next.mtu)
+            .putString("ping_method", next.pingMethod)
+            .putInt("ping_timeout", next.pingTimeoutSec)
+            .putInt("ping_concurrency", next.pingConcurrency)
+            .putString("ping_endpoint", next.pingEndpoint)
             .apply()
     }
 }

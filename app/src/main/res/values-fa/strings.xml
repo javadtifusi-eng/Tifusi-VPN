@@ -221,6 +221,15 @@
     <string name="dns_settings">تنظیمات DNS</string>
     <string name="route_settings">تنظیمات مسیریابی</string>
     <string name="subscription_settings">تنظیمات اشتراک</string>
+    <string name="ping_settings">تنظیمات پینگ</string>
+    <string name="ping_method">روش تست</string>
+    <string name="ping_method_connection_hint">از داخل هر کانفیگ یک درخواست واقعی به آدرس پایین می‌فرستد: نشان می‌دهد واقعاً ترافیک رد می‌کند یا نه.</string>
+    <string name="ping_method_tcp_hint">زمان دست‌دهی مستقیم TCP با آدرس سرور را می‌گیرد، بدون پراکسی. سرورهای IKEv2 از طریق سرویس IKE خودشان تست می‌شوند.</string>
+    <string name="ping_method_icmp_hint">یک پینگ مستقیم ICMP، بدون پراکسی، به آدرس سرور می‌فرستد.</string>
+    <string name="ping_timeout">مهلت: %1$d ثانیه</string>
+    <string name="ping_seconds">%1$d ثانیه</string>
+    <string name="ping_concurrency">اتصال همزمان: %1$d</string>
+    <string name="ping_endpoint">آدرس تست (روش Connection)</string>
     <string name="speed_test">تست سرعت</string>
     <string name="mtu">MTU</string>
     <string name="mtu_hint">اگه روی اینترنت موبایل بعضی سایت‌ها گیر می‌کنن، کمترش کن</string>

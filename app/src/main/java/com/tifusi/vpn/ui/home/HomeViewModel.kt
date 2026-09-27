@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import android.os.SystemClock
+import com.tifusi.vpn.data.AppSettings
 import com.tifusi.vpn.data.ConnectionReporter
 import com.tifusi.vpn.data.NetworkSnapshot
 import com.tifusi.vpn.data.SubscriptionClient
@@ -221,7 +222,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         // the core when the core carries the tunnel. The core's own delay test times a fresh
         // connection (handshakes included) and is only the fallback if the SOCKS path fails.
         val latency = measureInternet()
-            ?: if (_uiState.value.selectedProfile?.protocol?.runsInCore == true) controller.vlessLatencyMs(INTERNET_CHECK_URL) else null
+            ?: if (_uiState.value.selectedProfile?.protocol?.runsInCore == true) controller.vlessLatencyMs(AppSettings.state.value.pingUrl) else null
         if (_uiState.value.connectionState is VpnConnectionState.Connected) {
             _uiState.update { it.copy(internetChecked = true, internetLatencyMs = latency) }
         }
@@ -244,9 +245,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun timedRequest(keepAlive: Boolean): Long? = runCatching {
         val started = SystemClock.elapsedRealtime()
-        val connection = TunnelHttp.open(INTERNET_CHECK_URL).apply {
-            connectTimeout = INTERNET_CHECK_TIMEOUT_MS
-            readTimeout = INTERNET_CHECK_TIMEOUT_MS
+        val settings = AppSettings.state.value
+        val connection = TunnelHttp.open(settings.pingUrl).apply {
+            connectTimeout = settings.pingTimeoutSec * 1000
+            readTimeout = settings.pingTimeoutSec * 1000
             instanceFollowRedirects = false
             useCaches = false
         }
@@ -264,9 +266,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         private const val TICK_INTERVAL_MS = 1000L
         private const val MEMORY_INTERVAL_MS = 3_000L
         private const val INTERNET_CHECK_INTERVAL_MS = 15_000L
-        private const val INTERNET_CHECK_TIMEOUT_MS = 8_000
-        // Answers 204 with no body; the same endpoint Android itself uses for connectivity checks.
-        private const val INTERNET_CHECK_URL = "https://www.google.com/generate_204"
     }
 }
 

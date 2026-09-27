@@ -221,6 +221,15 @@
     <string name="dns_settings">DNS Settings</string>
     <string name="route_settings">Route Settings</string>
     <string name="subscription_settings">Subscription Settings</string>
+    <string name="ping_settings">Ping Settings</string>
+    <string name="ping_method">Test Method</string>
+    <string name="ping_method_connection_hint">Sends a real request through each config to the endpoint below: shows whether it actually carries traffic.</string>
+    <string name="ping_method_tcp_hint">Times a direct, non-proxied TCP handshake with the server address. IKEv2 servers are asked through their IKE daemon.</string>
+    <string name="ping_method_icmp_hint">Performs a direct, non-proxied ICMP echo request (ping) to the server address.</string>
+    <string name="ping_timeout">Timeout : %1$d Seconds</string>
+    <string name="ping_seconds">%1$d Seconds</string>
+    <string name="ping_concurrency">Concurrent Connections : %1$d</string>
+    <string name="ping_endpoint">Endpoint (connection test)</string>
     <string name="speed_test">Speed Test</string>
     <string name="mtu">MTU</string>
     <string name="mtu_hint">Lower it if some sites stall on mobile data</string>

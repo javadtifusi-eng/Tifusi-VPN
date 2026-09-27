@@ -25,9 +25,9 @@ object XrayProbe {
     }
 
     /** Milliseconds, or null when the server does not get the request through. Blocking. */
-    fun delayMs(context: Context, vlessLink: String): Long? = runCatching {
+    fun delayMs(context: Context, vlessLink: String, url: String = TEST_URL): Long? = runCatching {
         ensureCore(context)
         val config = XrayConfig.build(VlessLink.parse(vlessLink))
-        Libv2ray.measureOutboundDelay(config, TEST_URL)
+        Libv2ray.measureOutboundDelay(config, url)
     }.getOrNull()?.takeIf { it > 0 }
 }

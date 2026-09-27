@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.NetworkPing
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.UnfoldMore
@@ -62,7 +63,7 @@ import com.tifusi.vpn.ui.services.AboutContent
 import com.tifusi.vpn.ui.theme.AccentCyan
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
 
-enum class SettingsPage { SUBSCRIPTION_INFO, TUNNEL, DNS, ROUTE, SUBSCRIPTION, SPEED }
+enum class SettingsPage { SUBSCRIPTION_INFO, TUNNEL, DNS, ROUTE, SUBSCRIPTION, SPEED, PING }
 
 @Composable
 fun SettingsScreen(onOpen: (SettingsPage) -> Unit) {
@@ -111,6 +112,8 @@ fun SettingsScreen(onOpen: (SettingsPage) -> Unit) {
             SettingsLink(Icons.Default.Link, R.string.subscription_settings) { onOpen(SettingsPage.SUBSCRIPTION) }
             PanelDivider()
             SettingsLink(Icons.Default.Speed, R.string.speed_test) { onOpen(SettingsPage.SPEED) }
+            PanelDivider()
+            SettingsLink(Icons.Default.NetworkPing, R.string.ping_settings) { onOpen(SettingsPage.PING) }
             PanelDivider()
             PanelRow(
                 label = stringResource(R.string.nav_services),

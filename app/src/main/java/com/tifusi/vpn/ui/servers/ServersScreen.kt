@@ -1,5 +1,8 @@
 package com.tifusi.vpn.ui.servers
 
+import com.tifusi.vpn.vpn.Pinger
+import com.tifusi.vpn.data.TunnelSettings
+import com.tifusi.vpn.data.AppSettings
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -99,20 +102,18 @@ fun ServersScreen(
     fun pingAll() {
         val targets = profiles.filter { pingable(it) }
         targets.forEach { pings[it.id] = PING_RUNNING }
-        // Two at a time, not more: each probe spins up its own Xray instance, and on a low-end
-        // phone running several at once starves the UI (and any live tunnel). A per-probe timeout
-        // frees the slot so one dead server never blocks the queue.
-        val gate = kotlinx.coroutines.sync.Semaphore(2)
+        // Method, timeout, how many at once and the test URL come from Ping settings. A
+        // connection test spins up an Xray instance per server, so a low concurrency keeps a
+        // low-end phone responsive; TCP and ICMP probes are light. The per-probe timeout frees
+        // the slot so one dead server never blocks the queue.
+        val settings = AppSettings.state.value
+        val timeoutMs = settings.pingTimeoutSec * 1000
+        val gate = kotlinx.coroutines.sync.Semaphore(settings.pingConcurrency)
         targets.forEach { profile ->
             scope.launch {
-                // IKEv2 is one small UDP exchange, so it skips the Xray queue.
-                pings[profile.id] = if (profile.protocol == VpnProtocol.IKEV2) {
-                    withContext(Dispatchers.IO) { IkeProbe.delayMs(profile.serverAddress) } ?: PING_TIMEOUT
-                } else gate.withPermit {
+                pings[profile.id] = gate.withPermit {
                     withContext(Dispatchers.IO) {
-                        withTimeoutOrNull(8_000) {
-                            XrayProbe.delayMs(context, profile.vlessLink.orEmpty())
-                        } ?: PING_TIMEOUT
+                        withTimeoutOrNull(timeoutMs + 1_000L) { probe(context, profile, settings, timeoutMs) } ?: PING_TIMEOUT
                     }
                 }
             }
@@ -568,6 +569,19 @@ private fun Modifier.vertical() = layout { measurable, constraints ->
 private fun endpoint(profile: VpnProfile): Pair<String, Int>? = when (profile.protocol) {
     VpnProtocol.VLESS -> runCatching { VlessLink.parse(profile.vlessLink.orEmpty()) }.getOrNull()?.let { it.address to it.port }
     VpnProtocol.IKEV2 -> profile.serverAddress to 4500
+}
+
+/**
+ * One ping of [profile] by the chosen method. IKEv2 has no TCP service to handshake with, so a
+ * TCP ping of it asks its IKE daemon instead, as the connection test does.
+ */
+private fun probe(context: android.content.Context, profile: VpnProfile, settings: TunnelSettings, timeoutMs: Int): Long? {
+    val (host, port) = endpoint(profile) ?: return null
+    return when (settings.pingMethod) {
+        "icmp" -> Pinger.icmpMs(host, timeoutMs)
+        "tcp" -> if (profile.protocol == VpnProtocol.IKEV2) IkeProbe.delayMs(host, timeoutMs) else Pinger.tcpMs(host, port, timeoutMs)
+        else -> if (profile.protocol == VpnProtocol.IKEV2) IkeProbe.delayMs(host, timeoutMs) else XrayProbe.delayMs(context, profile.vlessLink.orEmpty(), settings.pingUrl)
+    }
 }
 
 /** VLESS through Xray, IKEv2 by its daemon's answer. */

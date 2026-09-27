@@ -1,5 +1,8 @@
 package com.tifusi.vpn.ui.settings
 
+import kotlin.math.roundToInt
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Slider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -207,5 +210,96 @@ private fun SpeedReadout(label: String, mbps: Double?, active: Boolean) {
             fontWeight = FontWeight.ExtraBold,
         )
         Text("Mbps", color = AccentCyan, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+fun PingSettingsPage(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val settings by AppSettings.state.collectAsState()
+    SubPage(stringResource(R.string.ping_settings), onBack) {
+        Panel {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+                Text(stringResource(R.string.ping_method), color = Color.White, fontSize = 15.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF1C1C1E)).padding(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    TunnelSettings.PING_METHODS.forEach { method ->
+                        val on = settings.pingMethod == method
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (on) Color(0xFF636366) else Color.Transparent)
+                                .clickable { AppSettings.update(context) { it.copy(pingMethod = method) } }
+                                .padding(vertical = 9.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(pingMethodLabel(method), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+                Text(
+                    stringResource(
+                        when (settings.pingMethod) {
+                            "tcp" -> R.string.ping_method_tcp_hint
+                            "icmp" -> R.string.ping_method_icmp_hint
+                            else -> R.string.ping_method_connection_hint
+                        },
+                    ),
+                    color = TifusiTextSecondary,
+                    fontSize = 12.5.sp,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            PanelDivider()
+            SliderSetting(
+                label = stringResource(R.string.ping_timeout, settings.pingTimeoutSec),
+                value = settings.pingTimeoutSec,
+                range = TunnelSettings.PING_TIMEOUTS,
+                minLabel = stringResource(R.string.ping_seconds, TunnelSettings.PING_TIMEOUTS.first),
+                maxLabel = stringResource(R.string.ping_seconds, TunnelSettings.PING_TIMEOUTS.last),
+            ) { v -> AppSettings.update(context) { it.copy(pingTimeoutSec = v) } }
+            PanelDivider()
+            SliderSetting(
+                label = stringResource(R.string.ping_concurrency, settings.pingConcurrency),
+                value = settings.pingConcurrency,
+                range = TunnelSettings.PING_CONCURRENCY,
+                minLabel = TunnelSettings.PING_CONCURRENCY.first.toString(),
+                maxLabel = TunnelSettings.PING_CONCURRENCY.last.toString(),
+            ) { v -> AppSettings.update(context) { it.copy(pingConcurrency = v) } }
+        }
+        Note(stringResource(R.string.ping_endpoint))
+        Choices(
+            TunnelSettings.PING_ENDPOINTS.map { (name, url) -> name to "$name  ·  ${url.substringAfter("://").substringBefore('/')}" },
+            settings.pingEndpoint,
+        ) { e -> AppSettings.update(context) { it.copy(pingEndpoint = e) } }
+    }
+}
+
+private fun pingMethodLabel(method: String) = when (method) {
+    "tcp" -> "TCP"
+    "icmp" -> "ICMP"
+    else -> "Connection"
+}
+
+/** A labelled whole-number slider with its bounds written at each end. */
+@Composable
+private fun SliderSetting(label: String, value: Int, range: IntRange, minLabel: String, maxLabel: String, onChange: (Int) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+        Text(label, color = Color.White, fontSize = 15.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(minLabel, color = Color.White, fontSize = 13.sp)
+            Slider(
+                value = value.toFloat(),
+                onValueChange = { onChange(it.roundToInt().coerceIn(range)) },
+                valueRange = range.first.toFloat()..range.last.toFloat(),
+                steps = (range.last - range.first - 1).coerceAtLeast(0),
+                colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = AccentCyan),
+                modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+            )
+            Text(maxLabel, color = Color.White, fontSize = 13.sp)
+        }
     }
 }

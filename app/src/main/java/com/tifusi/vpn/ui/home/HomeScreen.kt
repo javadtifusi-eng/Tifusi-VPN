@@ -104,13 +104,13 @@ fun HomeScreen(
             )
             PanelDivider()
             PanelRow(
-                label = stringResource(R.string.upload_value, state.uploadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) + "/s" } ?: zero),
+                label = stringResource(R.string.upload_value, state.uploadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: zero),
                 hint = trafficHint,
                 icon = { DiscIcon(Icons.Default.ArrowUpward) },
             )
             PanelDivider()
             PanelRow(
-                label = stringResource(R.string.download_value, state.downloadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) + "/s" } ?: zero),
+                label = stringResource(R.string.download_value, state.downloadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: zero),
                 icon = { DiscIcon(Icons.Default.ArrowDownward) },
             )
             PanelDivider()

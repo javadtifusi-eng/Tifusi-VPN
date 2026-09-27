@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -76,6 +78,8 @@ fun HomeScreen(
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Logo(Modifier.padding(start = 6.dp, top = 10.dp, bottom = 16.dp))
 
+        // Scrolls on short screens, so a taller panel or an error never pushes the slider off-screen.
+        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
         Panel {
             var levelMenu by remember { mutableStateOf(false) }
             PanelRow(label = stringResource(R.string.log_level)) {
@@ -141,7 +145,7 @@ fun HomeScreen(
             )
         }
 
-        Spacer(Modifier.weight(1f).height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
         // Certificate and validation failures show here rather than failing silently.
         when (connectionState) {
@@ -158,6 +162,7 @@ fun HomeScreen(
                 color = TifusiTextSecondary,
                 modifier = Modifier.padding(bottom = 6.dp),
             )
+        }
         }
 
         SlideToConnect(

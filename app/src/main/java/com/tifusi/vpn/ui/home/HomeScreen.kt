@@ -99,8 +99,8 @@ fun HomeScreen(
                 }
             }
             PanelDivider()
-            // IKEv2 speeds come from device totals, not the tunnel's own counters.
-            val estimated = isConnected && state.selectedProfile?.protocol == VpnProtocol.IKEV2
+            // Platform IKEv2 speeds come from device totals; the built-in engine's are exact.
+            val estimated = isConnected && state.selectedProfile?.protocol == VpnProtocol.IKEV2 && !settings.ikev2BuiltIn
             val approx = if (estimated) "≈" else ""
             val trafficHint = if (estimated) stringResource(R.string.traffic_estimated) else null
             PanelRow(

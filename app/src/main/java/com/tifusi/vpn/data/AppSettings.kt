@@ -23,7 +23,7 @@ data class TunnelSettings(
     val pingEndpoint: String = PING_ENDPOINTS.first().first,
     // IKEv2 through the built-in strongSwan engine instead of the phone's own IKEv2 client, which
     // is missing before Android 11 and passes no traffic on some phones (older Samsung builds).
-    val ikev2BuiltIn: Boolean = true,
+    val ikev2BuiltIn: Boolean = false,
 ) {
     val dnsServers: List<String> get() = DNS_PRESETS.firstOrNull { it.first == dns }?.second ?: DNS_PRESETS.first().second
     val pingUrl: String get() = PING_ENDPOINTS.firstOrNull { it.first == pingEndpoint }?.second ?: PING_ENDPOINTS.first().second

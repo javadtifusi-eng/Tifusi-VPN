@@ -37,6 +37,7 @@ class VpnController(private val context: Context) {
     private var lastPlatformEvent: PlatformVpnEvent? = null
     private var connectionCallback: ConnectivityManager.NetworkCallback? = null
     private var trafficBaseline: LongArray? = null
+    private var uidTrafficBaseline: Pair<Long, Long>? = null
     private var ikev2SessionKey: String? = null
 
     /** The [XrayVpnService] run this controller started; its status updates for other runs are stale. */
@@ -401,6 +402,8 @@ class VpnController(private val context: Context) {
         connectingSinceElapsedMs = null
         connectedSinceElapsedMs = SystemClock.elapsedRealtime()
         trafficBaseline = deviceTrafficCounters()
+        val uid = android.os.Process.myUid()
+        uidTrafficBaseline = android.net.TrafficStats.getUidRxBytes(uid) to android.net.TrafficStats.getUidTxBytes(uid)
         _state.value = VpnConnectionState.Connected
 
         val now = SystemClock.elapsedRealtime()
@@ -521,7 +524,7 @@ class VpnController(private val context: Context) {
     }
 
     fun trafficStats(profile: VpnProfile): TrafficStats? = when (profile.protocol) {
-        VpnProtocol.IKEV2 -> ikev2TrafficEstimate()
+        VpnProtocol.IKEV2 -> if (charonRunId != null) charonTraffic() else ikev2TrafficEstimate()
         VpnProtocol.VLESS -> XrayVpnService.trafficStats()
     }
 
@@ -540,6 +543,18 @@ class VpnController(private val context: Context) {
      * share is the mobile counter, and on Wi-Fi, where the mobile counter does not grow, it is about
      * half of the total.
      */
+    /**
+     * The built-in engine sends ESP from this app's own sockets, so the app's UID counters are the
+     * tunnel's traffic (plus ESP overhead): exact, unlike the device-wide estimate below.
+     */
+    private fun charonTraffic(): TrafficStats? {
+        val base = uidTrafficBaseline ?: return null
+        val rx = android.net.TrafficStats.getUidRxBytes(android.os.Process.myUid())
+        val tx = android.net.TrafficStats.getUidTxBytes(android.os.Process.myUid())
+        if (rx < 0 || tx < 0) return null
+        return TrafficStats(rxBytes = (rx - base.first).coerceAtLeast(0), txBytes = (tx - base.second).coerceAtLeast(0))
+    }
+
     private fun ikev2TrafficEstimate(): TrafficStats? {
         val base = trafficBaseline ?: return null
         val now = deviceTrafficCounters()

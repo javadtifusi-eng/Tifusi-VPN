@@ -100,18 +100,19 @@ fun HomeScreen(
         // PSK profiles run on the platform client, whose speeds come from device totals; the built-in engine's are exact.
         val approx = if (isConnected && state.selectedProfile?.ikev2AuthType == Ikev2AuthType.PSK) "≈" else ""
         StatusCard(state = state, isConnected = isConnected, isConnecting = isConnecting)
+        // Totals since the tunnel came up, as V2Box shows them: they only ever grow.
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SpeedTile(
                 label = stringResource(R.string.speed_download),
-                value = state.downloadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: "—",
+                value = state.trafficStats?.rxBytes.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: "—",
                 icon = Icons.Default.ArrowDownward,
                 tint = TifusiNeonGreen,
                 modifier = Modifier.weight(1f),
             )
             SpeedTile(
                 label = stringResource(R.string.speed_upload),
-                value = state.uploadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: "—",
+                value = state.trafficStats?.txBytes.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: "—",
                 icon = Icons.Default.ArrowUpward,
                 tint = AccentCyan,
                 modifier = Modifier.weight(1f),

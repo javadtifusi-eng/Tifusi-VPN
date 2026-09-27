@@ -272,7 +272,10 @@ public class CharonVpnService extends VpnService
 		writer.setValue("connection.password", profile.getStringExtra(EXTRA_PASSWORD));
 		writer.setValue("connection.local_id", profile.getStringExtra(EXTRA_LOCAL_ID));
 		writer.setValue("connection.remote_id", profile.getStringExtra(EXTRA_REMOTE_ID));
-		writer.setValue("connection.certreq", true);
+		/* no certificate requests: with them the server sends only the intermediates on the way to
+		 * a CA this phone listed, and when none matches (older CA stores) just its own certificate,
+		 * which the phone then cannot verify (peer_auth_failed). Without them it sends its chain. */
+		writer.setValue("connection.certreq", false);
 		writer.setValue("connection.strict_revocation", false);
 		writer.setValue("connection.ike_proposal", (String)null);
 		writer.setValue("connection.esp_proposal", (String)null);

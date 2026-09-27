@@ -77,10 +77,11 @@ fun SubscriptionSettingsPage(
     onLinkChange: (String) -> Unit,
     onImport: () -> Unit,
     onRefresh: () -> Unit,
+    onScanQr: () -> Unit,
     onBack: () -> Unit,
 ) {
     SubPage(stringResource(R.string.subscription_settings), onBack) {
-        SubscriptionCard(state = state, onLinkChange = onLinkChange, onImport = onImport, onRefresh = onRefresh)
+        SubscriptionCard(state = state, onLinkChange = onLinkChange, onImport = onImport, onRefresh = onRefresh, onScanQr = onScanQr)
     }
 }
 

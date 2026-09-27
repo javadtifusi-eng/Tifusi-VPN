@@ -106,6 +106,13 @@ dependencies {
     // Local persistence for saved VPN profiles
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
+    // QR scanning of the panel's subscription codes: CameraX for frames, ZXing (plain Java, small)
+    // to decode them. No Google Play services involved, which are unreliable from Iran.
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("com.google.zxing:core:3.5.3")
+
     testImplementation("junit:junit:4.13.2")
     // Android's org.json is only a stub in local unit tests; the real one lets the config builder run there.
     testImplementation("org.json:json:20240303")

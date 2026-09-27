@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Edit
@@ -84,6 +85,7 @@ fun ServersScreen(
     onImportSubscription: () -> Unit,
     onRefreshSubscription: () -> Unit,
     onRemoveSubscription: () -> Unit,
+    onScanQr: () -> Unit,
 ) {
     var pendingDelete by remember { mutableStateOf<VpnProfile?>(null) }
     var confirmRemoveSubscription by remember { mutableStateOf(false) }
@@ -149,6 +151,7 @@ fun ServersScreen(
                     onLinkChange = onSubscriptionLinkChange,
                     onImport = onImportSubscription,
                     onRefresh = onRefreshSubscription,
+                    onScanQr = onScanQr,
                 )
             } else {
                 SubscriptionStatus(subscription)
@@ -356,6 +359,7 @@ internal fun SubscriptionCard(
     onLinkChange: (String) -> Unit,
     onImport: () -> Unit,
     onRefresh: () -> Unit,
+    onScanQr: () -> Unit,
 ) {
     val clipboard = LocalClipboardManager.current
 
@@ -379,6 +383,9 @@ internal fun SubscriptionCard(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             trailingIcon = {
                 Row {
+                    IconButton(onClick = onScanQr) {
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.scan_qr_code))
+                    }
                     // Long-press copy/paste is unreliable on some phones, so paste is one tap here.
                     IconButton(onClick = { clipboard.getText()?.text?.let { onLinkChange(it.trim()) } }) {
                         Icon(Icons.Default.ContentPaste, contentDescription = stringResource(R.string.subscription_paste))

@@ -43,6 +43,10 @@ android {
         }
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -127,6 +131,11 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // Android's org.json is only a stub in local unit tests; the real one lets the config builder run there.
     testImplementation("org.json:json:20240303")
+    // ScreenshotTest: renders the screens on several phone sizes and font scales off-device.
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.06.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

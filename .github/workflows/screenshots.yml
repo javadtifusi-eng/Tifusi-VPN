@@ -1,0 +1,47 @@
+name: Screenshots
+
+# Renders the main screens on several phone sizes, font scales and both languages
+# (app/src/test/.../ui/ScreenshotTest.kt) and uploads the images, to review layouts on phones
+# nobody here has. Manual, or on test branches.
+on:
+  push:
+    branches: ["test/**"]
+  workflow_dispatch:
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Download Xray core (libv2ray.aar)
+        env:
+          LIBXRAY_VERSION: v26.9.9
+          LIBXRAY_SHA256: 9ecf4c921568d8f4cb8550d3bafe08ff6f1d1984f45a6ad183dcdf52ee9302de
+        run: |
+          mkdir -p app/libs
+          curl -fsSL --retry 3 -o app/libs/libv2ray.aar \
+            "https://github.com/2dust/AndroidLibXrayLite/releases/download/${LIBXRAY_VERSION}/libv2ray.aar"
+          echo "${LIBXRAY_SHA256}  app/libs/libv2ray.aar" | sha256sum -c -
+
+      - name: Render screens
+        run: gradle testDebugUnitTest --tests 'com.tifusi.vpn.ui.ScreenshotTest'
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: app/build/screenshots

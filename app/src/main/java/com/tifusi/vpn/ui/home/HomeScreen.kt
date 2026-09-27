@@ -1,5 +1,6 @@
 package com.tifusi.vpn.ui.home
 
+import com.tifusi.vpn.vpn.VpnProtocol
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,18 +94,23 @@ fun HomeScreen(
                 }
             }
             PanelDivider()
+            // IKEv2 speeds come from device totals, not the tunnel's own counters.
+            val estimated = isConnected && state.selectedProfile?.protocol == VpnProtocol.IKEV2
+            val approx = if (estimated) "≈" else ""
+            val trafficHint = if (estimated) stringResource(R.string.traffic_estimated) else null
             PanelRow(
                 label = stringResource(R.string.memory_usage, state.memoryBytes?.let(::formatBytes) ?: zero),
                 icon = { PanelIcon(Icons.Default.Memory) },
             )
             PanelDivider()
             PanelRow(
-                label = stringResource(R.string.upload_value, state.uploadBytesPerSec.takeIf { isConnected }?.let { formatBytes(it) + "/s" } ?: zero),
+                label = stringResource(R.string.upload_value, state.uploadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) + "/s" } ?: zero),
+                hint = trafficHint,
                 icon = { DiscIcon(Icons.Default.ArrowUpward) },
             )
             PanelDivider()
             PanelRow(
-                label = stringResource(R.string.download_value, state.downloadBytesPerSec.takeIf { isConnected }?.let { formatBytes(it) + "/s" } ?: zero),
+                label = stringResource(R.string.download_value, state.downloadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) + "/s" } ?: zero),
                 icon = { DiscIcon(Icons.Default.ArrowDownward) },
             )
             PanelDivider()

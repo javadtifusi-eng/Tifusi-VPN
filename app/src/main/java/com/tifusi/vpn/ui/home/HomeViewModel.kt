@@ -9,9 +9,8 @@ import com.tifusi.vpn.data.ConnectionReporter
 import com.tifusi.vpn.data.NetworkSnapshot
 import com.tifusi.vpn.data.SubscriptionClient
 import com.tifusi.vpn.data.SubscriptionInfo
+import com.tifusi.vpn.data.TunnelHttp
 import com.tifusi.vpn.data.VpnProfileRepository
-import java.net.HttpURLConnection
-import java.net.URL
 import kotlinx.coroutines.flow.first
 import com.tifusi.vpn.vpn.TrafficStats
 import com.tifusi.vpn.vpn.VpnConnectionState
@@ -218,12 +217,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun checkLatency() = latencyCheck.withLock {
-        val latency = if (_uiState.value.selectedProfile?.protocol?.runsInCore == true) {
-            // This app bypasses its own tunnel, so only the core can test it.
-            controller.vlessLatencyMs(INTERNET_CHECK_URL)
-        } else {
-            measureInternet()
-        }
+        // The same warmed-connection measurement for every protocol; TunnelHttp sends it through
+        // the core when the core carries the tunnel. The core's own delay test times a fresh
+        // connection (handshakes included) and is only the fallback if the SOCKS path fails.
+        val latency = measureInternet()
+            ?: if (_uiState.value.selectedProfile?.protocol?.runsInCore == true) controller.vlessLatencyMs(INTERNET_CHECK_URL) else null
         if (_uiState.value.connectionState is VpnConnectionState.Connected) {
             _uiState.update { it.copy(internetChecked = true, internetLatencyMs = latency) }
         }
@@ -246,7 +244,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun timedRequest(keepAlive: Boolean): Long? = runCatching {
         val started = SystemClock.elapsedRealtime()
-        val connection = (URL(INTERNET_CHECK_URL).openConnection() as HttpURLConnection).apply {
+        val connection = TunnelHttp.open(INTERNET_CHECK_URL).apply {
             connectTimeout = INTERNET_CHECK_TIMEOUT_MS
             readTimeout = INTERNET_CHECK_TIMEOUT_MS
             instanceFollowRedirects = false

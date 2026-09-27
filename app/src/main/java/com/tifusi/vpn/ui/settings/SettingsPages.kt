@@ -3,6 +3,8 @@ package com.tifusi.vpn.ui.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -130,7 +132,9 @@ fun SubscriptionInfoPage(info: SubscriptionInfo?, onBack: () -> Unit) {
 fun SpeedTestPage(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var running by remember { mutableStateOf(false) }
-    var live by remember { mutableStateOf<Double?>(null) }
+    var phase by remember { mutableStateOf<SpeedTest.Phase?>(null) }
+    var liveDown by remember { mutableStateOf<Double?>(null) }
+    var liveUp by remember { mutableStateOf<Double?>(null) }
     var result by remember { mutableStateOf<SpeedTest.Result?>(null) }
     var failed by remember { mutableStateOf(false) }
 
@@ -139,15 +143,18 @@ fun SpeedTestPage(onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(PanelCard).padding(vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(stringResource(R.string.speed_download), color = TifusiTextSecondary, fontSize = 13.sp)
-            val shown = if (running) live else result?.mbps
-            Text(
-                shown?.let { String.format(Locale.US, "%.1f", it) } ?: "—",
-                color = Color.White,
-                fontSize = 54.sp,
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text("Mbps", color = AccentCyan, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                SpeedReadout(
+                    label = stringResource(R.string.speed_download),
+                    mbps = if (running) liveDown else result?.downMbps,
+                    active = running && phase == SpeedTest.Phase.DOWNLOAD,
+                )
+                SpeedReadout(
+                    label = stringResource(R.string.speed_upload),
+                    mbps = if (running) liveUp else result?.upMbps,
+                    active = running && phase == SpeedTest.Phase.UPLOAD,
+                )
+            }
         }
         result?.let {
             Note(stringResource(if (it.throughVpn) R.string.speed_through_vpn else R.string.speed_direct))
@@ -162,9 +169,16 @@ fun SpeedTestPage(onBack: () -> Unit) {
                 .clickable(enabled = !running) {
                     running = true
                     failed = false
-                    live = null
+                    phase = SpeedTest.Phase.DOWNLOAD
+                    liveDown = null
+                    liveUp = null
                     scope.launch {
-                        val r = withContext(Dispatchers.IO) { SpeedTest.run { mbps -> live = mbps } }
+                        val r = withContext(Dispatchers.IO) {
+                            SpeedTest.run { p, mbps ->
+                                phase = p
+                                if (p == SpeedTest.Phase.DOWNLOAD) liveDown = mbps else liveUp = mbps
+                            }
+                        }
                         result = r
                         failed = r == null
                         running = false
@@ -182,3 +196,16 @@ fun SpeedTestPage(onBack: () -> Unit) {
     }
 }
 
+@Composable
+private fun SpeedReadout(label: String, mbps: Double?, active: Boolean) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, color = if (active) AccentCyan else TifusiTextSecondary, fontSize = 13.sp)
+        Text(
+            mbps?.let { String.format(Locale.US, "%.1f", it) } ?: "—",
+            color = Color.White,
+            fontSize = 40.sp,
+            fontWeight = FontWeight.ExtraBold,
+        )
+        Text("Mbps", color = AccentCyan, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}

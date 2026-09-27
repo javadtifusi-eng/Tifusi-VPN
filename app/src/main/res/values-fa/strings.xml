@@ -239,6 +239,8 @@
     <string name="bypass_iran_hint">سایت‌های .ir مستقیم باز می‌شن؛ سریع‌تر و بدون مصرف حجم اشتراک</string>
     <string name="speed_start">شروع</string>
     <string name="speed_testing">در حال تست…</string>
+    <string name="speed_upload">آپلود</string>
+    <string name="traffic_estimated">سرعت IKEv2 تقریبی است: اندروید شمارنده‌ی جدا برای تانل نمی‌دهد</string>
     <string name="speed_download">دانلود</string>
     <string name="speed_mbps">%1$s مگابیت</string>
     <string name="speed_failed">تست کامل نشد</string>

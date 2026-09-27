@@ -239,6 +239,8 @@
     <string name="bypass_iran_hint">Sites ending in .ir open directly, faster and without using your plan</string>
     <string name="speed_start">Start</string>
     <string name="speed_testing">Testing…</string>
+    <string name="speed_upload">Upload</string>
+    <string name="traffic_estimated">IKEv2 speeds are estimated: Android gives no per-tunnel counters</string>
     <string name="speed_download">Download</string>
     <string name="speed_mbps">%1$s Mbps</string>
     <string name="speed_failed">The test did not finish</string>

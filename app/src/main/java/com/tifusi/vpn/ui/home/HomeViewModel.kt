@@ -271,7 +271,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val TICK_INTERVAL_MS = 1000L
-        private const val SPEED_WINDOW_SAMPLES = 3
+        // Five seconds: Android's traffic counters land in bursts every few seconds on some phones
+        // (Samsung), so a shorter window kept dropping to zero between bursts.
+        private const val SPEED_WINDOW_SAMPLES = 6
         private const val MEMORY_INTERVAL_MS = 3_000L
         private const val INTERNET_CHECK_INTERVAL_MS = 15_000L
     }

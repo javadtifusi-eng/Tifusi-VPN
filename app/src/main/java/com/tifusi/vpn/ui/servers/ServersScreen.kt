@@ -77,9 +77,7 @@ fun ServersScreen(
     profiles: List<VpnProfile>,
     selectedProfileId: String?,
     onSelectProfile: (VpnProfile) -> Unit,
-    onEditProfile: (VpnProfile) -> Unit,
     onDeleteProfile: (VpnProfile) -> Unit,
-    onAddManually: () -> Unit,
     subscription: SubscriptionUiState,
     onSubscriptionLinkChange: (String) -> Unit,
     onImportSubscription: () -> Unit,
@@ -128,7 +126,6 @@ fun ServersScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         TopBar(
             hasSubscription = subscription.savedLink != null,
-            onAdd = onAddManually,
             onPingAll = ::pingAll,
             onRefresh = onRefreshSubscription,
             onRemove = { confirmRemoveSubscription = true },
@@ -194,7 +191,6 @@ fun ServersScreen(
                                     ping = pings[profile.id],
                                     isSelected = profile.id == selectedProfileId,
                                     onClick = { onSelectProfile(profile) },
-                                    onEdit = { onEditProfile(profile) },
                                     onShare = if (profile.vlessLink != null) {
                                         { share(profile) }
                                     } else null,
@@ -252,7 +248,6 @@ fun ServersScreen(
 @Composable
 private fun TopBar(
     hasSubscription: Boolean,
-    onAdd: () -> Unit,
     onPingAll: () -> Unit,
     onRefresh: () -> Unit,
     onRemove: () -> Unit,
@@ -260,7 +255,6 @@ private fun TopBar(
     var menu by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Spacer(Modifier.weight(1f))
-        IconButton(onClick = onAdd) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_manually), tint = Color.White) }
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.menu_more), tint = Color.White) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -453,7 +447,6 @@ private fun ServerRow(
     ping: Long?,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onEdit: () -> Unit,
     onShare: (() -> Unit)?,
 ) {
     val flag = profile.countryFlagEmoji ?: flagIn(profile.name)
@@ -513,7 +506,6 @@ private fun ServerRow(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(end = 10.dp)) {
-            RoundButton(Icons.Default.Edit, stringResource(R.string.action_edit), onEdit)
             if (onShare != null) RoundButton(Icons.Default.Share, stringResource(R.string.action_share), onShare)
         }
     }

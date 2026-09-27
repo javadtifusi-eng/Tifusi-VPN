@@ -216,9 +216,9 @@ class VpnController(private val context: Context) {
 
     private fun connectIkev2(profile: VpnProfile): Intent? {
         val manager = ikev2Manager ?: run {
-            // Pre-Android 11 has no public IKEv2 provisioning API, so fall back to the same
-            // hand-off Settings flow the legacy protocols use.
-            _state.value = VpnConnectionState.RequiresSystemSettings(profile)
+            // Only PSK profiles get here (the built-in engine takes the rest), and before
+            // Android 11 there is no platform IKEv2 client to run them on.
+            fail(VpnFailure.Unknown("PSK profiles need Android 11 or newer"))
             return null
         }
 
@@ -522,7 +522,6 @@ sealed interface VpnConnectionState {
     object Connected : VpnConnectionState
     data class Invalid(val issues: List<ValidationIssue>) : VpnConnectionState
     data class Failed(val failure: VpnFailure) : VpnConnectionState
-    data class RequiresSystemSettings(val profile: VpnProfile) : VpnConnectionState
 }
 
 sealed interface VpnFailure {

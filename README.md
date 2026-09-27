@@ -41,14 +41,12 @@ The app follows the panel's own code (`node_agent/ipsec.py`, `subscription/info_
 
 | Protocol | In Tifusi Panel | In the app |
 |---|---|---|
-| **IKEv2** | ✅ Two modes: "eap" (default) and "psk" | ✅ Automatic connect/disconnect (Android 11+); on 8-10, details + the phone's VPN settings |
-| **VLESS** | ✅ | ✅ Through the built-in Xray core |
-| **Hysteria2** | ✅ | ✅ The official client behind the same core, with a QUIC keepalive |
+| **IKEv2** | ✅ Two modes: "eap" (default) and "psk" | ✅ Through the built-in strongSwan engine on every phone, Android 8 and newer; PSK through the phone's own client (Android 11+) |
 
-WireGuard, L2TP and PPTP were removed. Saved profiles of those types are skipped on update instead of breaking the rest.
+Since 1.1 the app is IKEv2 only: it runs strongSwan's charon inside the app instead of the phone's own IKEv2 client, which is missing before Android 11 and passes no traffic on some phones (older Samsung builds). VLESS, Hysteria2, WireGuard, L2TP and PPTP were removed; saved profiles of those types are skipped.
 
 ### Importing servers from the panel
-On the servers screen, enter an **access code** or a **subscription link** and tap "Get servers". All of the user's IKEv2, VLESS and Hysteria2 servers are added automatically with username, password, PSK and Remote ID, and "Refresh" reads panel changes again.
+On the servers screen, enter an **access code** or a **subscription link** and tap "Get servers". All of the user's IKEv2 servers are added automatically with username, password, PSK and Remote ID, and "Refresh" reads panel changes again.
 - **Access code:** looks like `javad7KQ4MP9X` and is shown at the top of the user's subscription page. It is meant for cases where the link can't be sent and has to be read out. Letter case does not matter. The panel writes the panel's address into the code itself (`CODE-<encoded host>`), so the app needs no address of its own and a domain change needs no new build. `code@panel-domain` (for example `ali7KQ4MP9X@panel.example.com`) also works.
 - **Subscription link:** `https://<panel>/sub/<token>` works with any panel. A panel without this project's `app.json` is read through its standard subscription (VLESS and Hysteria2 links, usage from `Subscription-Userinfo`).
 - **Server certificate** comes from the panel automatically and is placed in the "Server CA certificate" field (the issuer of the server certificate). If the server certificate was renewed and the app can't connect, tap "Refresh".
@@ -123,15 +121,15 @@ On Android 13 and later, IKE negotiation failures are read from the system; on A
 ```
 app/src/main/java/com/tifusi/vpn/
 ├── vpn/
-│   ├── VpnController.kt        # single connect/disconnect entry point for all protocols
-│   ├── Ikev2VpnManager.kt      # VpnManager + Ikev2VpnProfile
-│   ├── XrayVpnService.kt       # this app's VpnService + the Xray core (VLESS, Hysteria2)
-│   ├── HysteriaClient.kt       # runs the Hysteria2 client as a local SOCKS5 proxy
-│   ├── LegacyVpnLauncher.kt    # IKEv2 on Android 8-10 → Android settings
+│   ├── VpnController.kt        # single connect/disconnect entry point
+│   ├── Ikev2VpnManager.kt      # VpnManager + Ikev2VpnProfile (PSK profiles only)
+│   ├── CharonLog.kt            # sends the engine log to the panel after a failure
 │   ├── CertificateStore.kt     # reading and checking certificates
 │   ├── VpnProfileValidator.kt  # checks before saving/connecting
 │   └── VpnProfile.kt, VpnProtocol.kt
 ├── data/VpnProfileRepository.kt
+java/org/strongswan/android/    # the built-in IKEv2 engine's Java side (CharonVpnService)
+jni/                            # its native glue; charon itself is built in CI
 └── ui/                         # Compose: home, servers, profile, services
 ```
 

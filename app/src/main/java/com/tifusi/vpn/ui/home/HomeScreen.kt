@@ -58,7 +58,6 @@ import androidx.compose.ui.unit.sp
 import com.tifusi.vpn.R
 import com.tifusi.vpn.data.AppSettings
 import com.tifusi.vpn.ui.components.DiscIcon
-import com.tifusi.vpn.ui.components.LegacyHandoffCard
 import com.tifusi.vpn.ui.components.Panel
 import com.tifusi.vpn.ui.components.PanelDivider
 import com.tifusi.vpn.ui.components.PanelIcon
@@ -136,9 +135,6 @@ fun HomeScreen(
         when (connectionState) {
             is VpnConnectionState.Invalid -> ErrorBlock(connectionState.issues.map { it.localized(context) }, onDismissMessage)
             is VpnConnectionState.Failed -> ErrorBlock(listOf(connectionState.failure.localized(context)), onDismissMessage)
-            is VpnConnectionState.RequiresSystemSettings -> Box(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
-                LegacyHandoffCard(profile = connectionState.profile, onDismiss = onDismissMessage)
-            }
             else -> Unit
         }
 

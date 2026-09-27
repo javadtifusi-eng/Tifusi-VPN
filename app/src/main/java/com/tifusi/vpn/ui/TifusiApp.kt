@@ -35,8 +35,6 @@ import androidx.navigation.compose.rememberNavController
 import com.tifusi.vpn.R
 import com.tifusi.vpn.ui.home.HomeScreen
 import com.tifusi.vpn.ui.home.HomeViewModel
-import com.tifusi.vpn.ui.servers.AddServerScreen
-import com.tifusi.vpn.ui.servers.AddServerViewModel
 import com.tifusi.vpn.ui.servers.ScanQrScreen
 import com.tifusi.vpn.ui.servers.ServersScreen
 import com.tifusi.vpn.ui.servers.SubscriptionViewModel
@@ -60,7 +58,6 @@ internal enum class TifusiDestination(
     SETTINGS("settings", R.string.settings, Icons.Outlined.Settings),
 }
 
-private const val ROUTE_ADD_SERVER = "add_server"
 private const val ROUTE_SCAN_QR = "scan_qr"
 private fun pageRoute(page: SettingsPage) = "settings/${page.name.lowercase()}"
 
@@ -70,8 +67,6 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
-    // Activity-scoped so the Configs tab can hand a profile to the edit form.
-    val addServerViewModel: AddServerViewModel = viewModel()
     val subscriptionViewModel: SubscriptionViewModel = viewModel()
     val subscriptionState by subscriptionViewModel.state.collectAsStateWithLifecycle()
     val back: () -> Unit = { navController.popBackStack() }
@@ -103,15 +98,7 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                     profiles = homeState.profiles,
                     selectedProfileId = homeState.selectedProfile?.id,
                     onSelectProfile = homeViewModel::selectProfile,
-                    onEditProfile = { profile ->
-                        addServerViewModel.loadDraft(profile, isExisting = true)
-                        navController.navigate(ROUTE_ADD_SERVER)
-                    },
                     onDeleteProfile = homeViewModel::deleteProfile,
-                    onAddManually = {
-                        addServerViewModel.startNew(homeState.selectedProtocol)
-                        navController.navigate(ROUTE_ADD_SERVER)
-                    },
                     subscription = subscriptionState,
                     onSubscriptionLinkChange = subscriptionViewModel::onLinkChange,
                     onImportSubscription = subscriptionViewModel::importLink,
@@ -150,9 +137,6 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                 )
             }
 
-            composable(ROUTE_ADD_SERVER) {
-                AddServerScreen(viewModel = addServerViewModel, onDone = back)
-            }
         }
     }
 }

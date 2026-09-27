@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.NetworkPing
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.ui.draw.clip
@@ -86,7 +85,15 @@ fun HomeScreen(
     val zero = stringResource(R.string.zero_kb)
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Logo(Modifier.padding(start = 6.dp, top = 10.dp, bottom = 16.dp))
+        // The mark now sits in the status card, so the header is the name alone.
+        Text(
+            "TIFUSI",
+            color = Color.White,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 13.sp,
+            letterSpacing = 4.7.sp,
+            modifier = Modifier.padding(start = 6.dp, top = 14.dp, bottom = 16.dp),
+        )
 
         // Scrolls on short screens, so a taller panel or an error never pushes the slider off-screen.
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -197,12 +204,18 @@ private fun StatusCard(state: HomeUiState, isConnected: Boolean, isConnecting: B
             .padding(horizontal = 20.dp, vertical = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        // The Tifusi mark itself is the status light: grey when off, cyan while connecting, green when on.
         Box(
-            modifier = Modifier.size(84.dp).clip(CircleShape).background(glow.copy(alpha = 0.16f))
+            modifier = Modifier.size(120.dp).clip(CircleShape).background(glow.copy(alpha = 0.14f))
                 .border(2.dp, glow, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Default.Shield, contentDescription = null, tint = glow, modifier = Modifier.size(40.dp))
+            Image(
+                painter = painterResource(R.drawable.ic_logo_mark),
+                contentDescription = stringResource(R.string.app_name),
+                colorFilter = ColorFilter.tint(glow),
+                modifier = Modifier.size(width = 80.dp, height = 44.dp),
+            )
         }
         Spacer(Modifier.height(14.dp))
         Text(

@@ -215,7 +215,8 @@ private fun ErrorBlock(messages: List<String>, onDismiss: () -> Unit) {
 }
 
 /** Keeps "≈1.75 MB" in its own order inside Persian (RTL) text, which otherwise shows "MB 1.75≈". */
-private fun ltr(value: String) = "\u2066$value\u2069"
+// The translated zero ("صفر KB") is already in reading order, so only numbers are isolated.
+private fun ltr(value: String) = if (value.firstOrNull()?.let { it.isDigit() || it == '≈' } == true) "\u2066$value\u2069" else value
 
 internal fun formatBytes(bytes: Long): String {
     val kb = bytes / 1024.0

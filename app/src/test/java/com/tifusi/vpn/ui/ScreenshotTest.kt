@@ -74,6 +74,8 @@ class ScreenshotTest(private val device: Device) {
     private fun shoot(screen: String, content: @androidx.compose.runtime.Composable () -> Unit) {
         RuntimeEnvironment.setQualifiers(device.qualifiers)
         RuntimeEnvironment.setFontScale(device.fontScale)
+        // The slider and the status dots animate forever, so the clock is driven by hand.
+        compose.mainClock.autoAdvance = false
         compose.setContent {
             TifusiVpnTheme {
                 Scaffold(
@@ -82,7 +84,7 @@ class ScreenshotTest(private val device: Device) {
                 ) { padding -> Box(Modifier.fillMaxSize().padding(padding)) { content() } }
             }
         }
-        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(2_000)
         val out = File("build/screenshots/${screen}_${device.name}.png").apply { parentFile?.mkdirs() }
         out.outputStream().use {
             compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)

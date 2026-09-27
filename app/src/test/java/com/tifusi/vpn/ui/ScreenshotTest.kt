@@ -6,10 +6,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onRoot
+import android.graphics.Canvas
+import android.os.Looper
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import org.robolectric.Shadows.shadowOf
 import com.tifusi.vpn.ui.home.HomeScreen
 import com.tifusi.vpn.ui.home.HomeUiState
 import com.tifusi.vpn.ui.settings.SettingsScreen
@@ -57,7 +58,7 @@ class ScreenshotTest(private val device: Device) {
         ).map { arrayOf<Any>(it) }
     }
 
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val profile = VpnProfile(
         id = "1",
@@ -85,10 +86,14 @@ class ScreenshotTest(private val device: Device) {
             }
         }
         compose.mainClock.advanceTimeBy(2_000)
+        shadowOf(Looper.getMainLooper()).idle()
+        // Drawn from the view rather than captureToImage(), which waits for an idle that the
+        // screens' endless animations never reach.
+        val view = compose.activity.window.decorView
+        val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+        view.draw(Canvas(bitmap))
         val out = File("build/screenshots/${screen}_${device.name}.png").apply { parentFile?.mkdirs() }
-        out.outputStream().use {
-            compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
-        }
+        out.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     @Test

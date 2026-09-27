@@ -2,7 +2,7 @@ package com.tifusi.vpn.vpn
 
 import java.net.URLDecoder
 
-/** The URI syntax vless:// and hysteria2:// share links have in common. */
+/** The URI syntax of vless:// share links. */
 internal object ShareLinkSyntax {
 
     /** Host and port text, brackets stripped from an IPv6 literal; null host when a bracket is unclosed. */

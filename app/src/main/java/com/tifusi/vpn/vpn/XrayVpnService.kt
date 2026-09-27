@@ -158,19 +158,11 @@ class XrayVpnService : VpnService() {
 
         val settings = AppSettings.load(this)
         val failure: String? = try {
-            // Either way the server is resolved now, on the phone's own network: once the tunnel is
-            // up the lookup would have to go through the tunnel it is building.
-            val config = if (Hysteria2Link.isHysteria2(rawLink)) {
-                val link = Hysteria2Link.parse(rawLink)
-                val serverIp = if (VlessLink.isIpLiteral(link.address)) link.address else resolve(link.address)
-                // Started before the interface exists, so a server that refuses us never gets a
-                // tunnel brought up only to be torn down again.
-                XrayConfig.buildForSocks(HysteriaClient.start(this, link, serverIp), settings)
-            } else {
-                val link = VlessLink.parse(rawLink)
-                val serverAddress = if (VlessLink.isIpLiteral(link.address)) link.address else resolve(link.address)
-                XrayConfig.build(link, serverAddress, settings)
-            }
+            // The server is resolved now, on the phone's own network: once the tunnel is up the
+            // lookup would have to go through the tunnel it is building.
+            val link = VlessLink.parse(rawLink)
+            val serverAddress = if (VlessLink.isIpLiteral(link.address)) link.address else resolve(link.address)
+            val config = XrayConfig.build(link, serverAddress, settings)
 
             if (prepare(this) != null) {
                 "VPN permission was withdrawn"
@@ -189,8 +181,6 @@ class XrayVpnService : VpnService() {
                 }
             }
         } catch (e: VlessLinkProblem) {
-            "Invalid link: ${e.message}"
-        } catch (e: Hysteria2LinkProblem) {
             "Invalid link: ${e.message}"
         } catch (e: Exception) {
             e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName
@@ -420,8 +410,6 @@ class XrayVpnService : VpnService() {
                 }
                 runCatching { tunnel?.close() }
                 tunnel = null
-                // After the core, so nothing is left writing to a proxy that has gone.
-                HysteriaClient.stop()
             }
         }
 

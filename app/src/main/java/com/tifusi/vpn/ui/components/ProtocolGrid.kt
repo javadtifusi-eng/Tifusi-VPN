@@ -130,17 +130,14 @@ private fun ProtocolCard(
 private fun VpnProtocol.icon(): ImageVector = when (this) {
     VpnProtocol.IKEV2 -> Icons.Default.Security
     VpnProtocol.VLESS -> Icons.Default.VpnKey
-    VpnProtocol.HYSTERIA2 -> Icons.Default.Bolt
 }
 
 private fun VpnProtocol.titleRes(): Int = when (this) {
     VpnProtocol.IKEV2 -> R.string.protocol_ikev2
     VpnProtocol.VLESS -> R.string.protocol_vless
-    VpnProtocol.HYSTERIA2 -> R.string.protocol_hysteria2
 }
 
 private fun VpnProtocol.taglineRes(): Int = when (this) {
     VpnProtocol.IKEV2 -> R.string.protocol_ikev2_tagline
     VpnProtocol.VLESS -> R.string.protocol_vless_tagline
-    VpnProtocol.HYSTERIA2 -> R.string.protocol_hysteria2_tagline
 }

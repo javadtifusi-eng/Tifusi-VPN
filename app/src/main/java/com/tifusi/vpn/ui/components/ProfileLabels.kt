@@ -7,7 +7,6 @@ import com.tifusi.vpn.vpn.VpnProtocol
 /** What the tab says: the transport a VLESS link actually uses, not just "VLESS". */
 internal fun protocolLabel(profile: VpnProfile): String = when (profile.protocol) {
     VpnProtocol.IKEV2 -> "IKEv2"
-    VpnProtocol.HYSTERIA2 -> "HY2"
     VpnProtocol.VLESS -> runCatching { VlessLink.parse(profile.vlessLink.orEmpty()) }.getOrNull()?.let { link ->
         when {
             link.security == VlessLink.SECURITY_REALITY -> "REALITY"

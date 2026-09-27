@@ -58,21 +58,6 @@ object XrayConfig {
     fun build(link: VlessLink, serverAddress: String = link.address, settings: TunnelSettings = TunnelSettings()): String =
         assemble(vlessOutbound(link, serverAddress), settings)
 
-    /**
-     * The same tunnel with the local Hysteria2 client (HysteriaClient) as the proxy: tun, DNS,
-     * routing and counters stay exactly as they are for VLESS, only where `proxy` leads changes.
-     */
-    fun buildForSocks(socksPort: Int, settings: TunnelSettings = TunnelSettings()): String = assemble(
-        JSONObject().put("tag", TAG_PROXY).put("protocol", "socks").put(
-            "settings",
-            JSONObject().put(
-                "servers",
-                JSONArray().put(JSONObject().put("address", "127.0.0.1").put("port", socksPort)),
-            ),
-        ),
-        settings,
-    )
-
     private fun assemble(proxy: JSONObject, settings: TunnelSettings): String = JSONObject().apply {
         put("log", JSONObject().put("loglevel", settings.logLevel))
         // Per-outbound counters, read by CoreController.queryAllOutboundTrafficStats for the speed readout.

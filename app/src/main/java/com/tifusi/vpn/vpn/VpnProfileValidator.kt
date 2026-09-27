@@ -10,7 +10,7 @@ object VpnProfileValidator {
     fun validate(profile: VpnProfile): List<ValidationIssue> {
         val issues = mutableListOf<ValidationIssue>()
 
-        // A VLESS or Hysteria2 server's address lives inside its link, which its validator checks.
+        // A VLESS server's address lives inside its link, which its validator checks.
         if (!profile.protocol.runsInCore && profile.serverAddress.isBlank()) {
             issues += ValidationIssue.MissingServerAddress
         }
@@ -18,7 +18,6 @@ object VpnProfileValidator {
         when (profile.protocol) {
             VpnProtocol.IKEV2 -> validateIkev2(profile, issues)
             VpnProtocol.VLESS -> validateVless(profile, issues)
-            VpnProtocol.HYSTERIA2 -> validateHysteria2(profile, issues)
         }
 
         return issues
@@ -94,19 +93,6 @@ object VpnProfileValidator {
         }
     }
 
-    private fun validateHysteria2(profile: VpnProfile, issues: MutableList<ValidationIssue>) {
-        val raw = profile.hysteria2Link?.takeIf { it.isNotBlank() }
-        if (raw == null) {
-            issues += ValidationIssue.MissingHysteria2Link
-            return
-        }
-        try {
-            Hysteria2Link.parse(raw)
-        } catch (e: Hysteria2LinkProblem) {
-            issues += ValidationIssue.BadHysteria2Link(e)
-        }
-    }
-
     private fun validateVless(profile: VpnProfile, issues: MutableList<ValidationIssue>) {
         val raw = profile.vlessLink?.takeIf { it.isNotBlank() }
         if (raw == null) {
@@ -136,7 +122,6 @@ sealed class ValidationIssue(val isBlocking: Boolean) {
     object MissingClientCertificate : ValidationIssue(true)
     object MissingServerCa : ValidationIssue(true)
     object MissingVlessLink : ValidationIssue(true)
-    object MissingHysteria2Link : ValidationIssue(true)
 
     /** The link sets allowInsecure, which is ignored: the server certificate is still verified. */
     object VlessInsecureIgnored : ValidationIssue(false)
@@ -147,5 +132,4 @@ sealed class ValidationIssue(val isBlocking: Boolean) {
     data class BadServerCa(val problem: CertificateProblem) : ValidationIssue(true)
     data class BadClientCertificate(val problem: CertificateProblem) : ValidationIssue(true)
     data class BadVlessLink(val problem: VlessLinkProblem) : ValidationIssue(true)
-    data class BadHysteria2Link(val problem: Hysteria2LinkProblem) : ValidationIssue(true)
 }

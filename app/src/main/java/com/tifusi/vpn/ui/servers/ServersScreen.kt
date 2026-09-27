@@ -55,7 +55,6 @@ import com.tifusi.vpn.ui.theme.TifusiNeonBlue
 import com.tifusi.vpn.ui.theme.TifusiNeonRed
 import com.tifusi.vpn.ui.theme.TifusiSurface
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
-import com.tifusi.vpn.vpn.Hysteria2Link
 import com.tifusi.vpn.vpn.IkeProbe
 import com.tifusi.vpn.vpn.VlessLink
 import com.tifusi.vpn.vpn.VpnProfile
@@ -121,7 +120,7 @@ fun ServersScreen(
     }
 
     fun share(profile: VpnProfile) {
-        val link = profile.vlessLink ?: profile.hysteria2Link ?: return
+        val link = profile.vlessLink ?: return
         val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, link)
         runCatching { context.startActivity(Intent.createChooser(send, null)) }
     }
@@ -197,7 +196,7 @@ fun ServersScreen(
                                     isSelected = profile.id == selectedProfileId,
                                     onClick = { onSelectProfile(profile) },
                                     onEdit = { onEditProfile(profile) },
-                                    onShare = if (profile.vlessLink != null || profile.hysteria2Link != null) {
+                                    onShare = if (profile.vlessLink != null) {
                                         { share(profile) }
                                     } else null,
                                 )
@@ -467,7 +466,6 @@ private fun ServerRow(
     val (tabColor, tabText) = when (profile.protocol) {
         VpnProtocol.VLESS -> AccentCyan to Color(0xFF00343C)
         VpnProtocol.IKEV2 -> ProtoIkev2 to Color(0xFFEAFFF6)
-        VpnProtocol.HYSTERIA2 -> ProtoGrey to Color.White
     }
 
     Row(
@@ -569,10 +567,9 @@ private fun Modifier.vertical() = layout { measurable, constraints ->
 /** Host and port a profile dials, for display and ping. */
 private fun endpoint(profile: VpnProfile): Pair<String, Int>? = when (profile.protocol) {
     VpnProtocol.VLESS -> runCatching { VlessLink.parse(profile.vlessLink.orEmpty()) }.getOrNull()?.let { it.address to it.port }
-    VpnProtocol.HYSTERIA2 -> runCatching { Hysteria2Link.parse(profile.hysteria2Link.orEmpty()) }.getOrNull()?.let { link -> link.port.toIntOrNull()?.let { link.address to it } }
     VpnProtocol.IKEV2 -> profile.serverAddress to 4500
 }
 
-/** VLESS through Xray, IKEv2 by its daemon's answer; Hysteria2 runs outside both. */
+/** VLESS through Xray, IKEv2 by its daemon's answer. */
 private fun pingable(profile: VpnProfile) = profile.protocol == VpnProtocol.VLESS || profile.protocol == VpnProtocol.IKEV2
 

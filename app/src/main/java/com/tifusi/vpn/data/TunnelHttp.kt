@@ -12,7 +12,7 @@ import java.net.URL
 
 /**
  * Opens HTTP connections that go through the VPN. The app is excluded from its own VpnService, so
- * with a REALITY/VLESS or Hysteria2 tunnel up its requests would otherwise bypass it: they are sent
+ * with a REALITY/VLESS tunnel up its requests would otherwise bypass it: they are sent
  * through the core's loopback SOCKS inbound instead. With IKEv2 the platform VPN covers this app
  * too, and a plain connection already goes through the tunnel.
  */

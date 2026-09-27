@@ -131,7 +131,7 @@ fun AboutContent() {
         BlackCard {
             Text(stringResource(R.string.about_protocols), color = TifusiTextSecondary, fontSize = 12.5.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("REALITY", "VLESS", "HY2", "IKEv2").forEach {
+                listOf("REALITY", "VLESS", "IKEv2").forEach {
                     Text(
                         it,
                         color = TifusiNeonBlue,

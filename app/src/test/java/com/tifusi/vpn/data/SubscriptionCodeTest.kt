@@ -45,11 +45,12 @@ class SubscriptionCodeTest {
 
     @Test
     fun aStandardSubscriptionFromAnyPanelIsRead() {
+        // Only vless:// is used; hysteria2:// and ss:// lines are skipped.
         val plain = SubscriptionClient.standardSubscriptionJson("$vless\n$hysteria2\nss://ignored@x:1#no", null)
-        assertEquals(2, SubscriptionClient.parseProfiles(plain).size)
+        assertEquals(1, SubscriptionClient.parseProfiles(plain).size)
 
         val encoded = java.util.Base64.getEncoder().encodeToString("$vless\n$hysteria2\n".toByteArray())
-        assertEquals(2, SubscriptionClient.parseProfiles(SubscriptionClient.standardSubscriptionJson(encoded, null)).size)
+        assertEquals(1, SubscriptionClient.parseProfiles(SubscriptionClient.standardSubscriptionJson(encoded, null)).size)
     }
 
     @Test

@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/Kotlin-Compose-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin Compose" />
   <a href="https://t.me/javadheydeari"><img src="https://img.shields.io/badge/Support-26A5E4?style=flat-square&logo=telegram&logoColor=white" alt="Telegram support" /></a>
   <a href="https://github.com/javadtifusi-eng/Tifusi-VPN/releases/latest"><img src="https://img.shields.io/github/v/release/javadtifusi-eng/Tifusi-VPN?style=flat-square&label=release&color=22C55E" alt="release" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-source--available-DC2626?style=flat-square" alt="license" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-22C55E?style=flat-square" alt="license" /></a>
 </p>
 
 <p align="center">
@@ -146,6 +146,6 @@ app/src/main/java/com/tifusi/vpn/
 
 ## مجوز استفاده
 
-کد تیفوسی وی‌پی‌ان **عمومی است ولی متن‌باز نیست.** می‌توانید کد را ببینید و نسخه‌های رسمی اپ را نصب و استفاده کنید. کپی کردن هر بخشی از کد، تغییر و انتشار دوباره، تغییر نام و برند یا فروش آن بدون اجازه‌ی کتبی ممنوع است. جزئیات در فایل [LICENSE](LICENSE).
+تیفوسی وی‌پی‌ان تحت مجوز **GNU GPL نسخه ۳ یا بالاتر** منتشر می‌شود، چون موتور IKEv2 آن strongSwan (با مجوز GPL) است. نام «Tifusi» و لوگوها شامل این مجوز نیستند و نسخه‌ی تغییریافته باید نام و لوگوی خودش را داشته باشد. جزئیات در فایل [LICENSE](LICENSE).
 
 </div>

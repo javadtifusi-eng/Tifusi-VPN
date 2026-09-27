@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/Kotlin-Compose-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin Compose" />
   <a href="https://t.me/javadheydeari"><img src="https://img.shields.io/badge/Support-26A5E4?style=flat-square&logo=telegram&logoColor=white" alt="Telegram support" /></a>
   <a href="https://github.com/javadtifusi-eng/Tifusi-VPN/releases/latest"><img src="https://img.shields.io/github/v/release/javadtifusi-eng/Tifusi-VPN?style=flat-square&label=release&color=22C55E" alt="release" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-source--available-DC2626?style=flat-square" alt="license" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-22C55E?style=flat-square" alt="license" /></a>
 </p>
 
 <p align="center">
@@ -144,4 +144,4 @@ app/src/main/java/com/tifusi/vpn/
 
 ## License
 
-Tifusi VPN is **source-available, not open source**. You may read the code and install and use the official app releases. Copying any part of the code, modifying and republishing it, rebranding it or selling it requires written permission. See [LICENSE](LICENSE).
+Tifusi VPN is free software under the **GNU GPL version 3 or later**, because its IKEv2 engine is strongSwan (GPL). The name "Tifusi" and its logos are not covered: a modified version must use its own. See [LICENSE](LICENSE).

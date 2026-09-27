@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -62,7 +61,6 @@ import com.tifusi.vpn.vpn.IkeProbe
 import com.tifusi.vpn.vpn.VlessLink
 import com.tifusi.vpn.vpn.VpnProfile
 import com.tifusi.vpn.vpn.VpnProtocol
-import com.tifusi.vpn.vpn.XrayProbe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withPermit
@@ -86,7 +84,6 @@ fun ServersScreen(
     onImportSubscription: () -> Unit,
     onRefreshSubscription: () -> Unit,
     onRemoveSubscription: () -> Unit,
-    onScanQr: () -> Unit,
 ) {
     var pendingDelete by remember { mutableStateOf<VpnProfile?>(null) }
     var confirmRemoveSubscription by remember { mutableStateOf(false) }
@@ -129,7 +126,6 @@ fun ServersScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         TopBar(
             hasSubscription = subscription.savedLink != null,
-            onScanQr = onScanQr,
             onAdd = onAddManually,
             onPingAll = ::pingAll,
             onRefresh = onRefreshSubscription,
@@ -153,7 +149,6 @@ fun ServersScreen(
                     onLinkChange = onSubscriptionLinkChange,
                     onImport = onImportSubscription,
                     onRefresh = onRefreshSubscription,
-                    onScanQr = onScanQr,
                 )
             } else {
                 SubscriptionStatus(subscription)
@@ -254,7 +249,6 @@ fun ServersScreen(
 @Composable
 private fun TopBar(
     hasSubscription: Boolean,
-    onScanQr: () -> Unit,
     onAdd: () -> Unit,
     onPingAll: () -> Unit,
     onRefresh: () -> Unit,
@@ -262,7 +256,6 @@ private fun TopBar(
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onScanQr) { Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.scan_qr_code), tint = Color.White) }
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onAdd) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_manually), tint = Color.White) }
         Box {
@@ -363,7 +356,6 @@ internal fun SubscriptionCard(
     onLinkChange: (String) -> Unit,
     onImport: () -> Unit,
     onRefresh: () -> Unit,
-    onScanQr: () -> Unit,
 ) {
     val clipboard = LocalClipboardManager.current
 
@@ -387,9 +379,6 @@ internal fun SubscriptionCard(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             trailingIcon = {
                 Row {
-                    IconButton(onClick = onScanQr) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.scan_qr_code))
-                    }
                     // Long-press copy/paste is unreliable on some phones, so paste is one tap here.
                     IconButton(onClick = { clipboard.getText()?.text?.let { onLinkChange(it.trim()) } }) {
                         Icon(Icons.Default.ContentPaste, contentDescription = stringResource(R.string.subscription_paste))
@@ -580,10 +569,10 @@ private fun probe(context: android.content.Context, profile: VpnProfile, setting
     return when (settings.pingMethod) {
         "icmp" -> Pinger.icmpMs(host, timeoutMs)
         "tcp" -> if (profile.protocol == VpnProtocol.IKEV2) IkeProbe.delayMs(host, timeoutMs) else Pinger.tcpMs(host, port, timeoutMs)
-        else -> if (profile.protocol == VpnProtocol.IKEV2) IkeProbe.delayMs(host, timeoutMs) else XrayProbe.delayMs(context, profile.vlessLink.orEmpty(), settings.pingUrl)
+        else -> IkeProbe.delayMs(host, timeoutMs)
     }
 }
 
-/** VLESS through Xray, IKEv2 by its daemon's answer. */
-private fun pingable(profile: VpnProfile) = profile.protocol == VpnProtocol.VLESS || profile.protocol == VpnProtocol.IKEV2
+/** IKEv2 by its daemon's answer. */
+private fun pingable(profile: VpnProfile) = profile.protocol == VpnProtocol.IKEV2
 

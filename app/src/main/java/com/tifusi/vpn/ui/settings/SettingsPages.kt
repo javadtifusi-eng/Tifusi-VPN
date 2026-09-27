@@ -72,55 +72,15 @@ private fun <T> Choices(options: List<Pair<T, String>>, selected: T, onSelect: (
 }
 
 @Composable
-fun TunnelSettingsPage(onBack: () -> Unit) {
-    val context = LocalContext.current
-    val settings by AppSettings.state.collectAsState()
-    SubPage(stringResource(R.string.tunnel_settings), onBack) {
-        Note(stringResource(R.string.mtu) + " — " + stringResource(R.string.mtu_hint))
-        Choices(TunnelSettings.MTUS.map { it to it.toString() }, settings.mtu) { mtu -> AppSettings.update(context) { it.copy(mtu = mtu) } }
-        Note(stringResource(R.string.applies_next_connect))
-    }
-}
-
-@Composable
-fun DnsSettingsPage(onBack: () -> Unit) {
-    val context = LocalContext.current
-    val settings by AppSettings.state.collectAsState()
-    SubPage(stringResource(R.string.dns_settings), onBack) {
-        Note(stringResource(R.string.dns_hint))
-        Choices(
-            TunnelSettings.DNS_PRESETS.map { (name, servers) -> name to "$name  ·  ${servers.joinToString(", ")}" },
-            settings.dns,
-        ) { dns -> AppSettings.update(context) { it.copy(dns = dns) } }
-        Note(stringResource(R.string.applies_next_connect))
-    }
-}
-
-@Composable
-fun RouteSettingsPage(onBack: () -> Unit) {
-    val context = LocalContext.current
-    val settings by AppSettings.state.collectAsState()
-    SubPage(stringResource(R.string.route_settings), onBack) {
-        Panel {
-            PanelRow(label = stringResource(R.string.bypass_iran), hint = stringResource(R.string.bypass_iran_hint)) {
-                PanelSwitch(settings.bypassIran) { on -> AppSettings.update(context) { it.copy(bypassIran = on) } }
-            }
-        }
-        Note(stringResource(R.string.applies_next_connect))
-    }
-}
-
-@Composable
 fun SubscriptionSettingsPage(
     state: SubscriptionUiState,
     onLinkChange: (String) -> Unit,
     onImport: () -> Unit,
     onRefresh: () -> Unit,
-    onScanQr: () -> Unit,
     onBack: () -> Unit,
 ) {
     SubPage(stringResource(R.string.subscription_settings), onBack) {
-        SubscriptionCard(state = state, onLinkChange = onLinkChange, onImport = onImport, onRefresh = onRefresh, onScanQr = onScanQr)
+        SubscriptionCard(state = state, onLinkChange = onLinkChange, onImport = onImport, onRefresh = onRefresh)
     }
 }
 

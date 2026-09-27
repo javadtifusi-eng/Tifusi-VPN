@@ -45,7 +45,7 @@ fun ProtocolGrid(
     onSelect: (VpnProtocol) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val protocols = VpnProtocol.entries.toList()
+    val protocols = listOf(VpnProtocol.IKEV2)
 
     Column(
         modifier = modifier.fillMaxWidth(),

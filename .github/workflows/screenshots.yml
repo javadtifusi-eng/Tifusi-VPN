@@ -27,16 +27,6 @@ jobs:
         with:
           gradle-version: "8.7"
 
-      - name: Download Xray core (libv2ray.aar)
-        env:
-          LIBXRAY_VERSION: v26.9.9
-          LIBXRAY_SHA256: 9ecf4c921568d8f4cb8550d3bafe08ff6f1d1984f45a6ad183dcdf52ee9302de
-        run: |
-          mkdir -p app/libs
-          curl -fsSL --retry 3 -o app/libs/libv2ray.aar \
-            "https://github.com/2dust/AndroidLibXrayLite/releases/download/${LIBXRAY_VERSION}/libv2ray.aar"
-          echo "${LIBXRAY_SHA256}  app/libs/libv2ray.aar" | sha256sum -c -
-
       - name: Render screens
         run: gradle testDebugUnitTest --tests 'com.tifusi.vpn.ui.ScreenshotTest'
 

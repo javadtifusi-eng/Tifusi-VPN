@@ -83,7 +83,7 @@ fun AddServerScreen(viewModel: AddServerViewModel, onDone: () -> Unit) {
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            VpnProtocol.entries.forEach { protocol ->
+            listOf(VpnProtocol.IKEV2).forEach { protocol ->
                 FilterChip(
                     selected = draft.protocol == protocol,
                     onClick = { viewModel.update { it.copy(protocol = protocol) } },

@@ -8,9 +8,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Samsung, Xiaomi and similar phones otherwise kill the VPN once the app leaves the screen. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <!-- Only for scanning the panel's subscription QR codes. -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:name=".TifusiVpnApp"
@@ -59,21 +56,6 @@
              IKEv2 client is missing (Android 8-10) or passes no traffic. -->
         <service
             android:name="org.strongswan.android.logic.CharonVpnService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse"
-            android:permission="android.permission.BIND_VPN_SERVICE">
-            <intent-filter>
-                <action android:name="android.net.VpnService" />
-            </intent-filter>
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="vpn" />
-        </service>
-
-        <!-- VLESS through the embedded Xray core. specialUse is what v2rayNG declares for the same
-             kind of service; Android 14 requires a foreground service type. -->
-        <service
-            android:name=".vpn.XrayVpnService"
             android:exported="false"
             android:foregroundServiceType="specialUse"
             android:permission="android.permission.BIND_VPN_SERVICE">

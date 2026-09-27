@@ -110,7 +110,7 @@ class ScreenshotTest(private val device: Device) {
                 internetLatencyMs = 184,
                 memoryBytes = 61_000_000,
             ),
-            onToggleConnection = {}, onOpenRouting = {}, onDismissMessage = {},
+            onToggleConnection = {}, onDismissMessage = {},
         )
     }
 
@@ -122,7 +122,15 @@ class ScreenshotTest(private val device: Device) {
                 selectedProfile = profile,
                 connectionState = VpnConnectionState.Failed(VpnFailure.Charon("auth_failed")),
             ),
-            onToggleConnection = {}, onOpenRouting = {}, onDismissMessage = {},
+            onToggleConnection = {}, onDismissMessage = {},
+        )
+    }
+
+    @Test
+    fun homeDisconnected() = shoot("home-disconnected") {
+        HomeScreen(
+            state = HomeUiState(profiles = listOf(profile), selectedProfile = profile),
+            onToggleConnection = {}, onDismissMessage = {},
         )
     }
 

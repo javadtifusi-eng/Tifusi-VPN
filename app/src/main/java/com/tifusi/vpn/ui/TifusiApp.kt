@@ -37,18 +37,14 @@ import com.tifusi.vpn.ui.home.HomeScreen
 import com.tifusi.vpn.ui.home.HomeViewModel
 import com.tifusi.vpn.ui.servers.AddServerScreen
 import com.tifusi.vpn.ui.servers.AddServerViewModel
-import com.tifusi.vpn.ui.servers.ScanQrScreen
 import com.tifusi.vpn.ui.servers.ServersScreen
 import com.tifusi.vpn.ui.servers.SubscriptionViewModel
-import com.tifusi.vpn.ui.settings.DnsSettingsPage
-import com.tifusi.vpn.ui.settings.RouteSettingsPage
 import com.tifusi.vpn.ui.settings.SettingsPage
 import com.tifusi.vpn.ui.settings.SettingsScreen
 import com.tifusi.vpn.ui.settings.PingSettingsPage
 import com.tifusi.vpn.ui.settings.SpeedTestPage
 import com.tifusi.vpn.ui.settings.SubscriptionInfoPage
 import com.tifusi.vpn.ui.settings.SubscriptionSettingsPage
-import com.tifusi.vpn.ui.settings.TunnelSettingsPage
 import com.tifusi.vpn.ui.theme.AccentCyan
 import com.tifusi.vpn.ui.theme.TifusiBackground
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
@@ -64,7 +60,6 @@ internal enum class TifusiDestination(
 }
 
 private const val ROUTE_ADD_SERVER = "add_server"
-private const val ROUTE_SCAN_QR = "scan_qr"
 private fun pageRoute(page: SettingsPage) = "settings/${page.name.lowercase()}"
 
 @Composable
@@ -97,7 +92,6 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                 HomeScreen(
                     state = homeState,
                     onToggleConnection = homeViewModel::toggleConnection,
-                    onOpenRouting = { navController.navigate(pageRoute(SettingsPage.ROUTE)) },
                     onDismissMessage = homeViewModel::dismissMessage,
                 )
             }
@@ -121,19 +115,6 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                     onImportSubscription = subscriptionViewModel::importLink,
                     onRefreshSubscription = subscriptionViewModel::refresh,
                     onRemoveSubscription = subscriptionViewModel::remove,
-                    onScanQr = { navController.navigate(ROUTE_SCAN_QR) },
-                )
-            }
-
-            composable(ROUTE_SCAN_QR) {
-                ScanQrScreen(
-                    onSubscriptionScanned = { link ->
-                        // Same path as typing the link and tapping "Get servers".
-                        subscriptionViewModel.onLinkChange(link)
-                        subscriptionViewModel.importLink()
-                        navController.popBackStack()
-                    },
-                    onCancel = back,
                 )
             }
 
@@ -141,9 +122,6 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                 SettingsScreen(onOpen = { navController.navigate(pageRoute(it)) })
             }
             composable(pageRoute(SettingsPage.SUBSCRIPTION_INFO)) { SubscriptionInfoPage(homeState.subscriptionInfo, back) }
-            composable(pageRoute(SettingsPage.TUNNEL)) { TunnelSettingsPage(back) }
-            composable(pageRoute(SettingsPage.DNS)) { DnsSettingsPage(back) }
-            composable(pageRoute(SettingsPage.ROUTE)) { RouteSettingsPage(back) }
             composable(pageRoute(SettingsPage.SPEED)) { SpeedTestPage(back) }
             composable(pageRoute(SettingsPage.PING)) { PingSettingsPage(back) }
             composable(pageRoute(SettingsPage.SUBSCRIPTION)) {
@@ -152,7 +130,6 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                     onLinkChange = subscriptionViewModel::onLinkChange,
                     onImport = subscriptionViewModel::importLink,
                     onRefresh = subscriptionViewModel::refresh,
-                    onScanQr = { navController.navigate(ROUTE_SCAN_QR) },
                     onBack = back,
                 )
             }

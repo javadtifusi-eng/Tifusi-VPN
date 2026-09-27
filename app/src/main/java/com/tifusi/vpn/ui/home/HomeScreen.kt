@@ -1,7 +1,26 @@
 package com.tifusi.vpn.ui.home
 
-import com.tifusi.vpn.vpn.VpnProtocol
+import com.tifusi.vpn.vpn.Ikev2AuthType
 import androidx.compose.foundation.Image
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.NetworkPing
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
+import com.tifusi.vpn.ui.theme.PanelCard
+import com.tifusi.vpn.ui.theme.PanelLine
+import com.tifusi.vpn.ui.theme.TifusiNeonGreen
+import com.tifusi.vpn.ui.theme.TifusiSurfaceVariant
+import com.tifusi.vpn.ui.theme.TifusiTextPrimary
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,13 +36,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.BatteryChargingFull
-import androidx.compose.material.icons.filled.CallSplit
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,15 +58,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tifusi.vpn.R
 import com.tifusi.vpn.data.AppSettings
-import com.tifusi.vpn.data.TunnelSettings
 import com.tifusi.vpn.ui.components.DiscIcon
 import com.tifusi.vpn.ui.components.LegacyHandoffCard
 import com.tifusi.vpn.ui.components.Panel
 import com.tifusi.vpn.ui.components.PanelDivider
 import com.tifusi.vpn.ui.components.PanelIcon
 import com.tifusi.vpn.ui.components.PanelRow
-import com.tifusi.vpn.ui.components.PanelSwitch
-import com.tifusi.vpn.ui.components.PanelValue
 import com.tifusi.vpn.ui.components.SlideToConnect
 import com.tifusi.vpn.ui.localized
 import com.tifusi.vpn.ui.theme.AccentCyan
@@ -65,7 +75,6 @@ import java.util.Locale
 fun HomeScreen(
     state: HomeUiState,
     onToggleConnection: () -> Unit,
-    onOpenRouting: () -> Unit,
     onDismissMessage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -81,68 +90,24 @@ fun HomeScreen(
 
         // Scrolls on short screens, so a taller panel or an error never pushes the slider off-screen.
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-        Panel {
-            var levelMenu by remember { mutableStateOf(false) }
-            PanelRow(label = stringResource(R.string.log_level)) {
-                Box {
-                    PanelValue(settings.logLevel, onClick = { levelMenu = true }, trailingIcon = Icons.Default.KeyboardArrowDown)
-                    DropdownMenu(expanded = levelMenu, onDismissRequest = { levelMenu = false }) {
-                        TunnelSettings.LOG_LEVELS.forEach { level ->
-                            DropdownMenuItem(
-                                text = { Text(level) },
-                                onClick = {
-                                    levelMenu = false
-                                    AppSettings.update(context) { it.copy(logLevel = level) }
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-            PanelDivider()
-            // Platform IKEv2 speeds come from device totals; the built-in engine's are exact.
-            val estimated = isConnected && state.selectedProfile?.protocol == VpnProtocol.IKEV2 && !settings.ikev2BuiltIn
-            val approx = if (estimated) "≈" else ""
-            val trafficHint = if (estimated) stringResource(R.string.traffic_estimated) else null
-            PanelRow(
-                label = stringResource(R.string.memory_usage, ltr(state.memoryBytes?.let(::formatBytes) ?: zero)),
-                icon = { PanelIcon(Icons.Default.Memory) },
+        // PSK profiles run on the platform client, whose speeds come from device totals; the built-in engine's are exact.
+        val approx = if (isConnected && state.selectedProfile?.ikev2AuthType == Ikev2AuthType.PSK) "≈" else ""
+        StatusCard(state = state, isConnected = isConnected, isConnecting = isConnecting)
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SpeedTile(
+                label = stringResource(R.string.speed_download),
+                value = state.downloadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: "—",
+                icon = Icons.Default.ArrowDownward,
+                tint = TifusiNeonGreen,
+                modifier = Modifier.weight(1f),
             )
-            PanelDivider()
-            PanelRow(
-                label = stringResource(R.string.upload_value, ltr(state.uploadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: zero)),
-                hint = trafficHint,
-                icon = { DiscIcon(Icons.Default.ArrowUpward) },
-            )
-            PanelDivider()
-            PanelRow(
-                label = stringResource(R.string.download_value, ltr(state.downloadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: zero)),
-                icon = { DiscIcon(Icons.Default.ArrowDownward) },
-            )
-            PanelDivider()
-            PanelRow(
-                label = stringResource(R.string.stop_on_sleep),
-                hint = stringResource(R.string.stop_on_sleep_hint),
-                icon = { PanelIcon(Icons.Default.BatteryChargingFull, tint = AccentCyan) },
-            ) {
-                PanelSwitch(settings.stopOnSleep) { on -> AppSettings.update(context) { it.copy(stopOnSleep = on) } }
-            }
-            if (state.selectedProfile?.protocol == VpnProtocol.IKEV2) {
-                PanelDivider()
-                PanelRow(
-                    label = stringResource(R.string.ikev2_strongswan),
-                    hint = stringResource(R.string.ikev2_strongswan_hint),
-                    icon = { PanelIcon(Icons.Default.Shield, tint = AccentCyan) },
-                ) {
-                    PanelSwitch(settings.ikev2BuiltIn) { on -> AppSettings.update(context) { it.copy(ikev2BuiltIn = on) } }
-                }
-            }
-            PanelDivider()
-            PanelRow(
-                label = stringResource(R.string.routing),
-                labelColor = AccentCyan,
-                icon = { PanelIcon(Icons.Default.CallSplit, tint = AccentCyan) },
-                onClick = onOpenRouting,
+            SpeedTile(
+                label = stringResource(R.string.speed_upload),
+                value = state.uploadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: "—",
+                icon = Icons.Default.ArrowUpward,
+                tint = AccentCyan,
+                modifier = Modifier.weight(1f),
             )
         }
 
@@ -213,6 +178,105 @@ private fun ErrorBlock(messages: List<String>, onDismiss: () -> Unit) {
         TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_dismiss)) }
     }
 }
+
+/** Server, state, time connected and latency, the first thing the eye lands on. */
+@Composable
+private fun StatusCard(state: HomeUiState, isConnected: Boolean, isConnecting: Boolean) {
+    val accent = when {
+        isConnected -> TifusiNeonGreen
+        isConnecting -> AccentCyan
+        else -> TifusiTextSecondary
+    }
+    val glow by animateColorAsState(accent, label = "status")
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(Brush.verticalGradient(listOf(glow.copy(alpha = 0.22f), PanelCard)))
+            .border(1.dp, glow.copy(alpha = 0.45f), RoundedCornerShape(24.dp))
+            .padding(horizontal = 20.dp, vertical = 22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier.size(84.dp).clip(CircleShape).background(glow.copy(alpha = 0.16f))
+                .border(2.dp, glow, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Default.Shield, contentDescription = null, tint = glow, modifier = Modifier.size(40.dp))
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            stringResource(
+                when {
+                    isConnected -> R.string.status_connected
+                    isConnecting -> R.string.status_connecting
+                    else -> R.string.status_disconnected
+                },
+            ),
+            color = glow,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        val profile = state.selectedProfile
+        if (profile != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                listOfNotNull(profile.countryFlagEmoji, profile.name).joinToString("  "),
+                color = TifusiTextPrimary,
+                fontSize = 15.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (isConnected) {
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Chip(Icons.Default.Timer, ltr(formatDuration(state.connectedSeconds)))
+                val latency = when {
+                    !state.internetChecked -> "…"
+                    state.internetLatencyMs != null -> "${state.internetLatencyMs} ms"
+                    else -> stringResource(R.string.internet_fail)
+                }
+                Chip(Icons.Default.NetworkPing, ltr(latency))
+            }
+        }
+    }
+}
+
+@Composable
+private fun Chip(icon: ImageVector, text: String) {
+    Row(
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(TifusiSurfaceVariant)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = TifusiTextSecondary, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.size(6.dp))
+        Text(text, color = TifusiTextPrimary, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun SpeedTile(label: String, value: String, icon: ImageVector, tint: Color, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.clip(RoundedCornerShape(20.dp)).background(PanelCard)
+            .border(1.dp, PanelLine, RoundedCornerShape(20.dp)).padding(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(26.dp).clip(CircleShape).background(tint.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp)) }
+            Spacer(Modifier.size(8.dp))
+            Text(label, color = TifusiTextSecondary, fontSize = 13.sp)
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(ltr(value), color = TifusiTextPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+    }
+}
+
+private fun formatDuration(seconds: Long): String =
+    String.format(Locale.US, "%02d:%02d:%02d", seconds / 3600, seconds % 3600 / 60, seconds % 60)
 
 /** Keeps "≈1.75 MB" in its own order inside Persian (RTL) text, which otherwise shows "MB 1.75≈". */
 // The translated zero ("صفر KB") is already in reading order, so only numbers are isolated.

@@ -26,20 +26,11 @@ android {
 
     }
 
-    // The Xray AAR bundles ~28 MB of geoip/geosite databases. The VLESS config routes by plain
-    // CIDRs and never loads them, so they stay out of the APK.
-    androidResources {
-        ignoreAssetsPatterns += listOf("!geoip.dat", "!geosite.dat", "!geoip-only-cn-private.dat")
-    }
-
-    // The Xray core is a ~35 MB native library per ABI. Stored compressed it roughly halves the
-    // download, which matters more on slow, filtered connections than the extraction at install.
+    // strongSwan's native libraries, stored compressed: a smaller download matters more on slow,
+    // filtered connections than the extraction at install.
     packaging {
         jniLibs {
             useLegacyPackaging = true
-            // Phones only: the emulator (x86) libraries of ML Kit would otherwise land in the
-            // APK.
-            excludes += listOf("**/x86/*.so", "**/x86_64/*.so")
         }
     }
 
@@ -114,19 +105,6 @@ dependencies {
 
     // Local persistence for saved VPN profiles
     implementation("androidx.datastore:datastore-preferences:1.1.1")
-
-    // WireGuard official Android backend (VpnService based tunnel)
-
-    // Xray core for VLESS/REALITY (2dust/AndroidLibXrayLite v26.9.9). Not in git: CI downloads it into
-    // app/libs before building; for a local build, fetch the same release asset there first.
-    implementation(files("libs/libv2ray.aar"))
-
-    // QR scanning of the panel's subscription codes. The bundled ML Kit model needs no Google Play
-    // services download, which is unreliable from Iran.
-    implementation("androidx.camera:camera-camera2:1.3.4")
-    implementation("androidx.camera:camera-lifecycle:1.3.4")
-    implementation("androidx.camera:camera-view:1.3.4")
-    implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
     testImplementation("junit:junit:4.13.2")
     // Android's org.json is only a stub in local unit tests; the real one lets the config builder run there.

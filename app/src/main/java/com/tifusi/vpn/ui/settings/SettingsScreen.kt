@@ -63,7 +63,7 @@ import com.tifusi.vpn.ui.services.AboutContent
 import com.tifusi.vpn.ui.theme.AccentCyan
 import com.tifusi.vpn.ui.theme.TifusiTextSecondary
 
-enum class SettingsPage { SUBSCRIPTION_INFO, TUNNEL, DNS, ROUTE, SUBSCRIPTION, SPEED, PING }
+enum class SettingsPage { SUBSCRIPTION_INFO, SUBSCRIPTION, SPEED, PING }
 
 @Composable
 fun SettingsScreen(onOpen: (SettingsPage) -> Unit) {
@@ -103,12 +103,6 @@ fun SettingsScreen(onOpen: (SettingsPage) -> Unit) {
 
         SectionCaption(stringResource(R.string.settings_section))
         Panel {
-            SettingsLink(Icons.Default.Tv, R.string.tunnel_settings) { onOpen(SettingsPage.TUNNEL) }
-            PanelDivider()
-            SettingsLink(Icons.Default.Dns, R.string.dns_settings) { onOpen(SettingsPage.DNS) }
-            PanelDivider()
-            SettingsLink(Icons.Default.CallSplit, R.string.route_settings) { onOpen(SettingsPage.ROUTE) }
-            PanelDivider()
             SettingsLink(Icons.Default.Link, R.string.subscription_settings) { onOpen(SettingsPage.SUBSCRIPTION) }
             PanelDivider()
             SettingsLink(Icons.Default.Speed, R.string.speed_test) { onOpen(SettingsPage.SPEED) }

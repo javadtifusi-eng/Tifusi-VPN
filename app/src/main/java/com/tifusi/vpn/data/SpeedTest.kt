@@ -26,7 +26,7 @@ object SpeedTest {
     class Result(val downMbps: Double?, val upMbps: Double?, val throughVpn: Boolean)
 
     fun run(onProgress: (Phase, Double) -> Unit = { _, _ -> }): Result? {
-        val throughVpn = TunnelHttp.viaCore || vpnActiveElsewhere()
+        val throughVpn = vpnActiveElsewhere()
         val down = measure(Phase.DOWNLOAD, onProgress, ::downloadStream)
         val up = measure(Phase.UPLOAD, onProgress, ::uploadStream)
         if (down == null && up == null) return null

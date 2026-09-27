@@ -228,11 +228,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun checkLatency() = latencyCheck.withLock {
-        // The same warmed-connection measurement for every protocol; TunnelHttp sends it through
-        // the core when the core carries the tunnel. The core's own delay test times a fresh
-        // connection (handshakes included) and is only the fallback if the SOCKS path fails.
+        // A warmed connection through the tunnel, so the handshakes are not counted as latency.
         val latency = measureInternet()
-            ?: if (_uiState.value.selectedProfile?.protocol?.runsInCore == true) controller.vlessLatencyMs(AppSettings.state.value.pingUrl) else null
         if (_uiState.value.connectionState is VpnConnectionState.Connected) {
             _uiState.update { it.copy(internetChecked = true, internetLatencyMs = latency) }
         }

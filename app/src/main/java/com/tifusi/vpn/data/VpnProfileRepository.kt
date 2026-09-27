@@ -28,8 +28,9 @@ class VpnProfileRepository(private val context: Context) {
     val subscriptionInfo: Flow<SubscriptionInfo?> =
         context.dataStore.data.map { prefs -> prefs[subscriptionInfoKey]?.let(SubscriptionInfo::fromJson) }
 
+    // The app only runs IKEv2 now; VLESS profiles saved earlier or sent by a panel stay hidden.
     val profiles: Flow<List<VpnProfile>> = context.dataStore.data.map { prefs ->
-        prefs[profilesKey]?.let { decodeProfiles(it) } ?: emptyList()
+        prefs[profilesKey]?.let { decodeProfiles(it) }?.filter { it.protocol == VpnProtocol.IKEV2 } ?: emptyList()
     }
 
     val selectedProfileId: Flow<String?> = context.dataStore.data.map { it[selectedProfileIdKey] }

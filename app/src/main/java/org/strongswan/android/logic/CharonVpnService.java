@@ -138,6 +138,9 @@ public class CharonVpnService extends VpnService
 	private volatile Intent mProfile;
 	private volatile boolean mRunning;
 	private volatile boolean mIsDisconnecting;
+	/* a duplicate of the TUN descriptor handed to charon: closing it on stop makes sure the
+	 * interface (and the VPN key icon) goes away even if charon's own copy lingers */
+	private ParcelFileDescriptor mTunCopy;
 
 	public static boolean isAvailable()
 	{
@@ -286,6 +289,7 @@ public class CharonVpnService extends VpnService
 			Log.i(TAG, "charon stopped");
 			mRunning = false;
 		}
+		mBuilderAdapter.closeTun();
 		mProfile = null;
 	}
 
@@ -629,7 +633,36 @@ public class CharonVpnService extends VpnService
 		public synchronized int establish()
 		{
 			ParcelFileDescriptor fd = establishIntern();
-			return fd != null ? fd.detachFd() : -1;
+			return fd != null ? keepCopy(fd).detachFd() : -1;
+		}
+
+		private ParcelFileDescriptor keepCopy(ParcelFileDescriptor fd)
+		{
+			closeTun();
+			try
+			{
+				mTunCopy = fd.dup();
+			}
+			catch (Exception e)
+			{
+				Log.w(TAG, "could not keep a copy of the TUN descriptor", e);
+			}
+			return fd;
+		}
+
+		public synchronized void closeTun()
+		{
+			if (mTunCopy != null)
+			{
+				try
+				{
+					mTunCopy.close();
+				}
+				catch (Exception ignored)
+				{
+				}
+				mTunCopy = null;
+			}
 		}
 
 		public synchronized int establishNoDns()
@@ -655,7 +688,7 @@ public class CharonVpnService extends VpnService
 			{
 				return -1;
 			}
-			return fd.detachFd();
+			return keepCopy(fd).detachFd();
 		}
 	}
 

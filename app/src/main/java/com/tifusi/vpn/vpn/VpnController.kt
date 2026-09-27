@@ -123,6 +123,7 @@ class VpnController(private val context: Context) {
                 if (runId != null) {
                     charonRunId = null
                     CharonVpnService.stop(context, runId + 1)
+                    CharonLog.report(context, "disconnect")
                 } else {
                     ikev2Manager?.disconnect()
                 }
@@ -188,6 +189,7 @@ class VpnController(private val context: Context) {
                 activeProtocol == VpnProtocol.IKEV2 && charonRunId != null -> {
                     CharonVpnService.stop(context, (charonRunId ?: 0) + 1)
                     charonRunId = null
+                    CharonLog.report(context, "timeout")
                     VpnFailure.Charon("no answer from the server within ${CONNECT_TIMEOUT_MS / 1000} s")
                 }
                 else -> {
@@ -326,10 +328,12 @@ class VpnController(private val context: Context) {
             CharonVpnService.State.FAILED -> {
                 charonRunId = null
                 val error = CharonVpnService.getError()
+                CharonLog.report(context, "failed")
                 fail(if (error == "revoked") VpnFailure.Deactivated else VpnFailure.Charon(error ?: "unknown"))
             }
             CharonVpnService.State.DISABLED -> {
                 charonRunId = null
+                CharonLog.report(context, "dropped")
                 markDisconnected()
             }
             null -> Unit

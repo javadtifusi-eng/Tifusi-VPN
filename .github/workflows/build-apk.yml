@@ -60,7 +60,7 @@ jobs:
       # lineage proving the old key handed over to it, so Android 9+ installs the update in place
       # and from then on refuses any APK signed with the old key alone (rollback is not granted).
       # The asset names have to stay constant, otherwise the releases/latest/download links break
-      # on every build. tifusi-vpn.apk stays the universal APK: the in-app updater downloads it.
+      # on every build. tifusi-vpn.apk is the one APK (all ABIs): the in-app updater downloads it.
       - name: Sign the APKs
         env:
           RELEASE_KEYSTORE_B64: ${{ secrets.TIFUSI_RELEASE_KEYSTORE_B64 }}
@@ -75,17 +75,15 @@ jobs:
           echo "$RELEASE_KEYSTORE_B64" | base64 -d > "$ks"
           out=app/build/outputs/apk/release
           sign() {
-            "$bt/zipalign" -f -p 4 "$out/app-$1-release-unsigned.apk" "$RUNNER_TEMP/aligned.apk"
+            "$bt/zipalign" -f -p 4 "$out/app-release-unsigned.apk" "$RUNNER_TEMP/aligned.apk"
             "$bt/apksigner" sign \
               --ks app/tifusi-debug.p12 --ks-pass pass:tifusi-debug --ks-key-alias tifusi \
               --next-signer --ks "$ks" --ks-pass env:RELEASE_KEYSTORE_PASSWORD --ks-key-alias tifusi-release \
               --lineage app/signing/lineage.bin --rotation-min-sdk-version 28 \
-              --out "$2" "$RUNNER_TEMP/aligned.apk"
-            "$bt/apksigner" verify --min-sdk-version 26 "$2"
+              --out "$1" "$RUNNER_TEMP/aligned.apk"
+            "$bt/apksigner" verify --min-sdk-version 26 "$1"
           }
-          sign universal tifusi-vpn.apk
-          sign arm64-v8a tifusi-vpn-arm64.apk
-          sign armeabi-v7a tifusi-vpn-armv7.apk
+          sign tifusi-vpn.apk
           rm -f "$ks"
           ls -la tifusi-vpn*.apk
 
@@ -131,8 +129,6 @@ jobs:
           name: Tifusi VPN ${{ env.VERSION_NAME }}
           files: |
             tifusi-vpn.apk
-            tifusi-vpn-arm64.apk
-            tifusi-vpn-armv7.apk
 
       # Only the newest build stays on the Releases page. The updater and the download links only use
       # releases/latest, and a build that fails the smoke test never reaches this step.

@@ -26,18 +26,6 @@ android {
 
     }
 
-    // One APK per ABI (~half the download), plus the universal APK that the in-app updater and the
-    // releases/latest/download/tifusi-vpn.apk link serve, so 32-bit phones keep updating.
-    // ndk.abiFilters cannot be combined with ABI splits, so x86 is dropped in packaging instead.
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a")
-            isUniversalApk = true
-        }
-    }
-
     // The Xray AAR bundles ~28 MB of geoip/geosite databases. The VLESS config routes by plain
     // CIDRs and never loads them, so they stay out of the APK.
     androidResources {
@@ -50,7 +38,7 @@ android {
         jniLibs {
             useLegacyPackaging = true
             // Phones only: the emulator (x86) libraries of ML Kit would otherwise land in the
-            // universal APK.
+            // APK.
             excludes += listOf("**/x86/*.so", "**/x86_64/*.so")
         }
     }

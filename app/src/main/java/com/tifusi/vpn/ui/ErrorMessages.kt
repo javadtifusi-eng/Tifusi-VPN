@@ -34,6 +34,7 @@ fun VpnFailure.localized(context: Context): String = when (this) {
     is VpnFailure.Unknown -> context.getString(R.string.error_unknown, detail ?: "-")
     // The core's own text, untranslated, like the platform reports: it is what gets diagnosed.
     is VpnFailure.Xray -> context.getString(R.string.error_xray, detail)
+    is VpnFailure.Charon -> context.getString(R.string.error_charon, detail)
 }
 
 fun VlessLinkProblem.localized(context: Context): String = when (this) {

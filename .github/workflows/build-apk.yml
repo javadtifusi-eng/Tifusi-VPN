@@ -2,7 +2,8 @@ name: Build APK
 
 on:
   push:
-    branches: [main]
+    # Other branches build and smoke-test only; their APK is a workflow artifact, never a release.
+    branches: [main, "test/**"]
   workflow_dispatch:
 
 # Needed to create the release and upload the APK to it.
@@ -24,7 +25,7 @@ jobs:
       # on 2026-09-15 (android-actions/setup-android#537); the build only needs platform-tools.
       - uses: android-actions/setup-android@v3
         with:
-          packages: platform-tools
+          packages: platform-tools ndk;27.2.12479018
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -42,6 +43,20 @@ jobs:
           curl -fsSL --retry 3 -o app/libs/libv2ray.aar \
             "https://github.com/2dust/AndroidLibXrayLite/releases/download/${LIBXRAY_VERSION}/libv2ray.aar"
           echo "${LIBXRAY_SHA256}  app/libs/libv2ray.aar" | sha256sum -c -
+
+      # strongSwan's charon, the in-app IKEv2 engine (org.strongswan.android.logic.CharonVpnService).
+      # Built from pinned sources; the cache key covers the script and the JNI glue, so it only
+      # recompiles when one of them changes.
+      - name: Cache strongSwan native libraries
+        id: strongswan-cache
+        uses: actions/cache@v4
+        with:
+          path: app/src/main/jniLibs
+          key: strongswan-${{ hashFiles('.github/scripts/build-strongswan.sh', 'app/src/main/jni/**') }}
+
+      - name: Build strongSwan native libraries
+        if: steps.strongswan-cache.outputs.cache-hit != 'true'
+        run: ANDROID_NDK_ROOT="$ANDROID_HOME/ndk/27.2.12479018" bash .github/scripts/build-strongswan.sh
 
       # The tag stays v<run number>: installed apps parse it as a number to detect updates. Only
       # the release title shows the user-facing 1.N version.
@@ -122,7 +137,15 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: bash .github/scripts/smoke-test.sh tifusi-vpn.apk previous.apk
 
+      - name: Upload test APK
+        if: github.ref != 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tifusi-vpn-test
+          path: tifusi-vpn.apk
+
       - name: Publish release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
@@ -133,6 +156,7 @@ jobs:
       # Only the newest build stays on the Releases page. The updater and the download links only use
       # releases/latest, and a build that fails the smoke test never reaches this step.
       - name: Delete older releases
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

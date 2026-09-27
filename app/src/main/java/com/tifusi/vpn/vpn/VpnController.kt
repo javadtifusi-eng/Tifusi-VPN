@@ -6,6 +6,7 @@ import android.net.ConnectivityManager
 import android.net.VpnManager
 import android.net.VpnService
 import android.os.SystemClock
+import com.tifusi.vpn.data.AppSettings
 import com.tifusi.vpn.data.ConnectionReport
 import com.tifusi.vpn.data.ConnectionReporter
 import com.tifusi.vpn.data.NetworkSnapshot
@@ -13,11 +14,12 @@ import com.tifusi.vpn.data.reportDetail
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.strongswan.android.logic.CharonVpnService
 
 /**
  * Single entry point the UI uses to bring a tunnel up or down, regardless of protocol. Hides the
- * fact that IKEv2 goes through the platform VpnManager and VLESS through the embedded core in
- * [XrayVpnService].
+ * fact that IKEv2 goes through the built-in strongSwan engine ([CharonVpnService]) or the platform
+ * VpnManager, and VLESS through the embedded core in [XrayVpnService].
  *
  * [connect] and [disconnect] may block, so callers must invoke them off the main thread.
  */
@@ -40,6 +42,9 @@ class VpnController(private val context: Context) {
     /** The [XrayVpnService] run this controller started; its status updates for other runs are stale. */
     private var xrayRunId: Long? = null
 
+    /** The [CharonVpnService] run this controller started, while IKEv2 goes through the built-in engine. */
+    private var charonRunId: Long? = null
+
     // Reporting only observes the transitions below; it never feeds back into [state]. Results can
     // be reached from the ticker, the UI and the network callback thread at once, so the attempt is
     // taken under [reportLock] and recorded exactly once.
@@ -56,7 +61,7 @@ class VpnController(private val context: Context) {
         // On Android 11-12 there is no profile-state API, so the appearance of a VPN network is
         // the only signal that the IKEv2 tunnel actually came up.
         connectionCallback = ikev2Manager?.observeConnectionState { connected ->
-            if (activeProtocol != VpnProtocol.IKEV2) return@observeConnectionState
+            if (activeProtocol != VpnProtocol.IKEV2 || charonRunId != null) return@observeConnectionState
             if (connected && _state.value is VpnConnectionState.Connecting) {
                 markConnected()
             } else if (!connected && _state.value is VpnConnectionState.Connected) {
@@ -73,6 +78,10 @@ class VpnController(private val context: Context) {
             xrayRunId = xray.runId
             activeProtocol = VpnProtocol.VLESS
             if (xray is XrayStatus.Running) markConnected() else markConnecting()
+        } else if (CharonVpnService.getState().let { it == CharonVpnService.State.CONNECTED || it == CharonVpnService.State.CONNECTING }) {
+            charonRunId = CharonVpnService.getRunId()
+            activeProtocol = VpnProtocol.IKEV2
+            if (CharonVpnService.getState() == CharonVpnService.State.CONNECTED) markConnected() else markConnecting()
         } else if (ikev2Manager?.platformState() == Ikev2PlatformState.CONNECTED) {
             activeProtocol = VpnProtocol.IKEV2
             markConnected()
@@ -95,7 +104,7 @@ class VpnController(private val context: Context) {
         beginAttempt(profile.protocol)
 
         return when (profile.protocol) {
-            VpnProtocol.IKEV2 -> connectIkev2(profile)
+            VpnProtocol.IKEV2 -> if (usesBuiltInEngine(profile)) connectCharon(profile) else connectIkev2(profile)
             VpnProtocol.VLESS -> connectVless(profile)
         }
     }
@@ -109,7 +118,15 @@ class VpnController(private val context: Context) {
             pendingAttempt.also { pendingAttempt = null }
         }
         when (profile.protocol) {
-            VpnProtocol.IKEV2 -> ikev2Manager?.disconnect()
+            VpnProtocol.IKEV2 -> {
+                val runId = charonRunId
+                if (runId != null) {
+                    charonRunId = null
+                    CharonVpnService.stop(context, runId + 1)
+                } else {
+                    ikev2Manager?.disconnect()
+                }
+            }
             VpnProtocol.VLESS -> {
                 xrayRunId = null
                 XrayVpnService.stop(context)
@@ -140,7 +157,9 @@ class VpnController(private val context: Context) {
      * Remote ID mismatch — into a visible failure instead of an endless "Connecting".
      */
     fun refresh() {
-        if (activeProtocol == VpnProtocol.IKEV2) {
+        if (activeProtocol == VpnProtocol.IKEV2 && charonRunId != null) {
+            reconcileCharon()
+        } else if (activeProtocol == VpnProtocol.IKEV2) {
             ikev2Manager?.platformState()?.let { platform ->
                 when (platform) {
                     Ikev2PlatformState.CONNECTED ->
@@ -160,11 +179,16 @@ class VpnController(private val context: Context) {
         if (_state.value is VpnConnectionState.Connecting && connectingSince != null &&
             SystemClock.elapsedRealtime() - connectingSince > CONNECT_TIMEOUT_MS
         ) {
-            val failure = when (activeProtocol) {
-                VpnProtocol.VLESS -> {
+            val failure = when {
+                activeProtocol == VpnProtocol.VLESS -> {
                     XrayVpnService.stop(context)
                     xrayRunId = null
                     VpnFailure.Xray("Core did not come up within ${CONNECT_TIMEOUT_MS / 1000} s")
+                }
+                activeProtocol == VpnProtocol.IKEV2 && charonRunId != null -> {
+                    CharonVpnService.stop(context, (charonRunId ?: 0) + 1)
+                    charonRunId = null
+                    VpnFailure.Charon("no answer from the server within ${CONNECT_TIMEOUT_MS / 1000} s")
                 }
                 else -> {
                     if (activeProtocol == VpnProtocol.IKEV2) ikev2Manager?.disconnect()
@@ -179,7 +203,7 @@ class VpnController(private val context: Context) {
     fun onPlatformEvent(event: PlatformVpnEvent) {
         // A settings change, not a failure: it must not tear down a working tunnel.
         if (event.category == VpnManager.CATEGORY_EVENT_ALWAYS_ON_STATE_CHANGED) return
-        if (activeProtocol != VpnProtocol.IKEV2) return
+        if (activeProtocol != VpnProtocol.IKEV2 || charonRunId != null) return
         val current = _state.value
         if (current !is VpnConnectionState.Connecting && current !is VpnConnectionState.Connected) return
         // Starting a new run stops the previous one, and the platform reports that stop as
@@ -239,6 +263,78 @@ class VpnController(private val context: Context) {
         }
     }
 
+
+    /**
+     * The built-in engine takes username/password and certificate profiles (strongSwan for Android
+     * has no PSK). Before Android 11 there is no platform IKEv2 client, so it is used regardless.
+     */
+    private fun usesBuiltInEngine(profile: VpnProfile): Boolean {
+        if (!CharonVpnService.isAvailable()) return false
+        val supported = when (profile.ikev2AuthType) {
+            Ikev2AuthType.USERNAME_PASSWORD -> !profile.username.isNullOrBlank()
+            Ikev2AuthType.CERTIFICATE -> !profile.pkcs12Base64.isNullOrBlank()
+            else -> false
+        }
+        return supported && (ikev2Manager == null || AppSettings.load(context).ikev2BuiltIn)
+    }
+
+    private fun connectCharon(profile: VpnProfile): Intent? {
+        // CharonVpnService is this app's own VpnService, with the same consent gate as VLESS.
+        VpnService.prepare(context)?.let { return it }
+
+        // The platform profile, if one is up, would hold the VPN slot.
+        ikev2Manager?.disconnect()
+        activeProtocol = VpnProtocol.IKEV2
+        markConnecting()
+        val runId = SystemClock.elapsedRealtimeNanos()
+        charonRunId = runId
+        val eap = profile.ikev2AuthType == Ikev2AuthType.USERNAME_PASSWORD
+        val extras = Intent()
+            .putExtra(CharonVpnService.EXTRA_NAME, profile.name)
+            .putExtra(CharonVpnService.EXTRA_SERVER, profile.serverAddress)
+            .putExtra(CharonVpnService.EXTRA_TYPE, if (eap) "ikev2-eap" else "ikev2-cert")
+            .putExtra(CharonVpnService.EXTRA_REMOTE_ID, profile.remoteIdentifier?.takeIf { it.isNotBlank() })
+            .putExtra(CharonVpnService.EXTRA_LOCAL_ID, profile.localIdentifier?.takeIf { it.isNotBlank() })
+            .putExtra(CharonVpnService.EXTRA_CA_PEM, profile.serverRootCaCertPem?.takeIf { it.isNotBlank() })
+            .putExtra(CharonVpnService.EXTRA_MTU, AppSettings.load(context).mtu.coerceAtMost(1400))
+        if (eap) {
+            extras.putExtra(CharonVpnService.EXTRA_USERNAME, profile.username)
+                .putExtra(CharonVpnService.EXTRA_PASSWORD, profile.password)
+        } else {
+            extras.putExtra(CharonVpnService.EXTRA_P12, profile.pkcs12Base64)
+                .putExtra(CharonVpnService.EXTRA_P12_PASSWORD, profile.pkcs12Password)
+        }
+        try {
+            CharonVpnService.start(context, extras, runId)
+        } catch (e: Exception) {
+            charonRunId = null
+            fail(VpnFailure.Charon(e.message ?: e.javaClass.simpleName))
+        }
+        return null
+    }
+
+    /** Follows [CharonVpnService] for the run [connectCharon] started; driven by [refresh]. */
+    private fun reconcileCharon() {
+        val runId = charonRunId ?: return
+        if (CharonVpnService.getRunId() != runId) return
+        when (CharonVpnService.getState()) {
+            CharonVpnService.State.CONNECTING ->
+                // A drop charon is re-establishing on its own shows as connecting again.
+                if (_state.value is VpnConnectionState.Connected) markConnecting()
+            CharonVpnService.State.CONNECTED ->
+                if (_state.value !is VpnConnectionState.Connected) markConnected()
+            CharonVpnService.State.FAILED -> {
+                charonRunId = null
+                val error = CharonVpnService.getError()
+                fail(if (error == "revoked") VpnFailure.Deactivated else VpnFailure.Charon(error ?: "unknown"))
+            }
+            CharonVpnService.State.DISABLED -> {
+                charonRunId = null
+                markDisconnected()
+            }
+            null -> Unit
+        }
+    }
 
     private fun connectVless(profile: VpnProfile): Intent? {
         // XrayVpnService is this app's own VpnService, which has a consent gate separate from the
@@ -495,4 +591,7 @@ sealed interface VpnFailure {
 
     /** The Xray core behind VLESS could not start; [detail] is its own error text. */
     data class Xray(val detail: String) : VpnFailure
+
+    /** The built-in strongSwan engine failed; [detail] is its status (auth_failed, unreachable...). */
+    data class Charon(val detail: String) : VpnFailure
 }

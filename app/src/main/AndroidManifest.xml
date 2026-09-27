@@ -12,11 +12,6 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
-    <!-- Android 11+ package visibility: StrongSwanLauncher checks whether strongSwan is installed. -->
-    <queries>
-        <package android:name="org.strongswan.android" />
-    </queries>
-
     <application
         android:name=".TifusiVpnApp"
         android:allowBackup="false"
@@ -60,6 +55,21 @@
             </intent-filter>
         </service>
 
+        <!-- IKEv2 through the built-in strongSwan engine (charon), for phones whose platform
+             IKEv2 client is missing (Android 8-10) or passes no traffic. -->
+        <service
+            android:name="org.strongswan.android.logic.CharonVpnService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="vpn" />
+        </service>
+
         <!-- VLESS through the embedded Xray core. specialUse is what v2rayNG declares for the same
              kind of service; Android 14 requires a foreground service type. -->
         <service
@@ -75,16 +85,6 @@
                 android:value="vpn" />
         </service>
 
-        <!-- Hands the .sswan profile to the strongSwan app (vpn/StrongSwanLauncher.kt). -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.files"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
     </application>
 
 </manifest>

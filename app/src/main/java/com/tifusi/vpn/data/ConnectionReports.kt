@@ -344,6 +344,7 @@ fun VpnFailure.reportDetail(): String = ConnectionReporter.sanitizeDetail(
         VpnFailure.Deactivated -> "Deactivated: Android turned the VPN off (Settings or another VPN app)"
         is VpnFailure.Unknown -> "Unknown: $detail"
         is VpnFailure.Xray -> "Xray: $detail"
+        is VpnFailure.Charon -> "strongSwan: $detail"
     },
 )
 

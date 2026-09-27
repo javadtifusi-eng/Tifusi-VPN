@@ -129,7 +129,7 @@ fun HomeScreen(
                     hint = stringResource(R.string.ikev2_strongswan_hint),
                     icon = { PanelIcon(Icons.Default.Shield, tint = AccentCyan) },
                 ) {
-                    PanelSwitch(settings.ikev2ViaStrongSwan) { on -> AppSettings.update(context) { it.copy(ikev2ViaStrongSwan = on) } }
+                    PanelSwitch(settings.ikev2BuiltIn) { on -> AppSettings.update(context) { it.copy(ikev2BuiltIn = on) } }
                 }
             }
             PanelDivider()

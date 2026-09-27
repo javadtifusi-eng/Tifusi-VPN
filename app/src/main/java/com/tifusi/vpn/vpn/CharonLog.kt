@@ -15,9 +15,12 @@ object CharonLog {
     private const val PIECE_LENGTH = 480
     private val INTERESTING = Regex(
         "error|fail|unable|establish|delet|DELETE|TUN|tun device|retransmit|timeout|giving up|" +
-            "closing|authentication|virtual IP|received .*notify|no route|revoked",
+            "closing|authentication|virtual IP|received .*notify|no route|revoked|trust|constraint|" +
+            "public key|signature|verif|received end entity|received issuer|identity|expired|not valid",
         RegexOption.IGNORE_CASE,
     )
+    // Noise that would crowd the telling lines out of the 2 KB that reach the panel.
+    private val NOISE = Regex("sending cert request|establishing CHILD_SA", RegexOption.IGNORE_CASE)
 
     fun report(context: Context, reason: String) {
         val app = context.applicationContext
@@ -29,7 +32,7 @@ object CharonLog {
             val lines = runCatching { file.readLines() }.getOrNull() ?: return@Thread
             // Timestamps and thread ids only cost space: "Sep 27 17:48:04 06[IKE] x" -> "[IKE] x".
             val picked = lines.takeLast(400)
-                .filter { INTERESTING.containsMatchIn(it) }
+                .filter { INTERESTING.containsMatchIn(it) && !NOISE.containsMatchIn(it) }
                 .map { it.replace(Regex("^.*?\\d\\d\\[(\\w+)]"), "[$1]").trim() }
                 .takeLast(40)
             val text = picked.joinToString(" | ")

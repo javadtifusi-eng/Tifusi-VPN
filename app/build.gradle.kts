@@ -85,7 +85,11 @@ android {
             // Published builds are release (not debuggable) builds: Play Protect scans debuggable
             // APKs from outside the store much longer, which stalled in-app updates. Signed in CI.
             signingConfig = null
-            isMinifyEnabled = false
+            // R8: Compose is noticeably slower unoptimised, and unused code and resources go too.
+            // Names stay (proguard-rules.pro), so crash traces and connection reports stay readable.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 

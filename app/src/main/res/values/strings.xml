@@ -207,6 +207,10 @@
     <string name="zero_kb">Zero KB</string>
     <string name="stop_on_sleep">Stop on sleep</string>
     <string name="stop_on_sleep_hint">improves battery usage</string>
+    <string name="ikev2_strongswan">IKEv2 via strongSwan</string>
+    <string name="ikev2_strongswan_hint">for phones (e.g. Samsung) where IKEv2 connects but has no internet</string>
+    <string name="strongswan_install">Install strongSwan VPN Client, then tap connect again</string>
+    <string name="strongswan_password_copied">Password copied: paste it in strongSwan, save, then tap the profile</string>
     <string name="routing">Routing</string>
     <string name="configs_title">Configs</string>
     <string name="swipe_to_delete">Swipe left to delete</string>

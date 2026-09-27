@@ -21,6 +21,8 @@ data class TunnelSettings(
     val pingTimeoutSec: Int = 5,
     val pingConcurrency: Int = 5,
     val pingEndpoint: String = PING_ENDPOINTS.first().first,
+    // IKEv2 through the strongSwan app, for phones whose platform IKEv2 client passes no traffic.
+    val ikev2ViaStrongSwan: Boolean = false,
 ) {
     val dnsServers: List<String> get() = DNS_PRESETS.firstOrNull { it.first == dns }?.second ?: DNS_PRESETS.first().second
     val pingUrl: String get() = PING_ENDPOINTS.firstOrNull { it.first == pingEndpoint }?.second ?: PING_ENDPOINTS.first().second
@@ -69,6 +71,7 @@ object AppSettings {
                 pingTimeoutSec = p.getInt("ping_timeout", d.pingTimeoutSec).coerceIn(TunnelSettings.PING_TIMEOUTS),
                 pingConcurrency = p.getInt("ping_concurrency", d.pingConcurrency).coerceIn(TunnelSettings.PING_CONCURRENCY),
                 pingEndpoint = p.getString("ping_endpoint", d.pingEndpoint)!!.takeIf { e -> TunnelSettings.PING_ENDPOINTS.any { it.first == e } } ?: d.pingEndpoint,
+                ikev2ViaStrongSwan = p.getBoolean("ikev2_strongswan", d.ikev2ViaStrongSwan),
             )
             loaded = true
         }
@@ -88,6 +91,7 @@ object AppSettings {
             .putInt("ping_timeout", next.pingTimeoutSec)
             .putInt("ping_concurrency", next.pingConcurrency)
             .putString("ping_endpoint", next.pingEndpoint)
+            .putBoolean("ikev2_strongswan", next.ikev2ViaStrongSwan)
             .apply()
     }
 }

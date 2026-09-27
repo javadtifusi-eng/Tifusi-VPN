@@ -207,6 +207,10 @@
     <string name="zero_kb">صفر KB</string>
     <string name="stop_on_sleep">توقف هنگام خواب</string>
     <string name="stop_on_sleep_hint">مصرف باتری کمتر</string>
+    <string name="ikev2_strongswan">IKEv2 با strongSwan</string>
+    <string name="ikev2_strongswan_hint">برای گوشی‌هایی (مثل سامسونگ) که IKEv2 وصل می‌شود ولی اینترنت ندارد</string>
+    <string name="strongswan_install">اپ strongSwan VPN Client را نصب کنید و دوباره اتصال را بزنید</string>
+    <string name="strongswan_password_copied">رمز کپی شد: در strongSwan جای رمز بچسبانید، ذخیره کنید و روی پروفایل بزنید</string>
     <string name="routing">مسیریابی</string>
     <string name="configs_title">کانفیگ‌ها</string>
     <string name="swipe_to_delete">برای حذف به کنار بکشید</string>

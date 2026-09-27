@@ -13,6 +13,7 @@ import com.tifusi.vpn.data.SubscriptionInfo
 import com.tifusi.vpn.data.TunnelHttp
 import com.tifusi.vpn.data.VpnProfileRepository
 import kotlinx.coroutines.flow.first
+import com.tifusi.vpn.vpn.StrongSwanLauncher
 import com.tifusi.vpn.vpn.TrafficStats
 import com.tifusi.vpn.vpn.VpnConnectionState
 import com.tifusi.vpn.vpn.VpnController
@@ -192,6 +193,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleConnection() {
         val profile = _uiState.value.selectedProfile ?: return
+        val app = getApplication<Application>()
+        if (AppSettings.load(app).ikev2ViaStrongSwan && StrongSwanLauncher.supports(profile)) {
+            StrongSwanLauncher.launch(app, profile)
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
             when (_uiState.value.connectionState) {
                 // Tapping while negotiating cancels, rather than stacking a second attempt.

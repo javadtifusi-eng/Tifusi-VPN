@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -120,6 +121,16 @@ fun HomeScreen(
                 icon = { PanelIcon(Icons.Default.BatteryChargingFull, tint = AccentCyan) },
             ) {
                 PanelSwitch(settings.stopOnSleep) { on -> AppSettings.update(context) { it.copy(stopOnSleep = on) } }
+            }
+            if (state.selectedProfile?.protocol == VpnProtocol.IKEV2) {
+                PanelDivider()
+                PanelRow(
+                    label = stringResource(R.string.ikev2_strongswan),
+                    hint = stringResource(R.string.ikev2_strongswan_hint),
+                    icon = { PanelIcon(Icons.Default.Shield, tint = AccentCyan) },
+                ) {
+                    PanelSwitch(settings.ikev2ViaStrongSwan) { on -> AppSettings.update(context) { it.copy(ikev2ViaStrongSwan = on) } }
+                }
             }
             PanelDivider()
             PanelRow(

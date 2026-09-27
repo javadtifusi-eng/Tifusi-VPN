@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -104,18 +105,18 @@ fun HomeScreen(
             val approx = if (estimated) "≈" else ""
             val trafficHint = if (estimated) stringResource(R.string.traffic_estimated) else null
             PanelRow(
-                label = stringResource(R.string.memory_usage, state.memoryBytes?.let(::formatBytes) ?: zero),
+                label = stringResource(R.string.memory_usage, ltr(state.memoryBytes?.let(::formatBytes) ?: zero)),
                 icon = { PanelIcon(Icons.Default.Memory) },
             )
             PanelDivider()
             PanelRow(
-                label = stringResource(R.string.upload_value, state.uploadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: zero),
+                label = stringResource(R.string.upload_value, ltr(state.uploadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: zero)),
                 hint = trafficHint,
                 icon = { DiscIcon(Icons.Default.ArrowUpward) },
             )
             PanelDivider()
             PanelRow(
-                label = stringResource(R.string.download_value, state.downloadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: zero),
+                label = stringResource(R.string.download_value, ltr(state.downloadBytesPerSec.takeIf { isConnected }?.let { approx + formatBytes(it) } ?: zero)),
                 icon = { DiscIcon(Icons.Default.ArrowDownward) },
             )
             PanelDivider()
@@ -147,14 +148,6 @@ fun HomeScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // Certificate and validation failures show here rather than failing silently.
-        when (connectionState) {
-            is VpnConnectionState.Invalid -> ErrorBlock(connectionState.issues.map { it.localized(context) }, onDismissMessage)
-            is VpnConnectionState.Failed -> ErrorBlock(listOf(connectionState.failure.localized(context)), onDismissMessage)
-            is VpnConnectionState.RequiresSystemSettings -> LegacyHandoffCard(profile = connectionState.profile, onDismiss = onDismissMessage)
-            else -> Unit
-        }
-
         if (state.selectedProfile == null) {
             Text(
                 stringResource(R.string.no_profile_selected),
@@ -163,6 +156,17 @@ fun HomeScreen(
                 modifier = Modifier.padding(bottom = 6.dp),
             )
         }
+        }
+
+        // Outside the scrolling panel, right above the slider: on a small screen an error below
+        // the panel would be scrolled out of sight.
+        when (connectionState) {
+            is VpnConnectionState.Invalid -> ErrorBlock(connectionState.issues.map { it.localized(context) }, onDismissMessage)
+            is VpnConnectionState.Failed -> ErrorBlock(listOf(connectionState.failure.localized(context)), onDismissMessage)
+            is VpnConnectionState.RequiresSystemSettings -> Box(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                LegacyHandoffCard(profile = connectionState.profile, onDismiss = onDismissMessage)
+            }
+            else -> Unit
         }
 
         SlideToConnect(
@@ -209,6 +213,9 @@ private fun ErrorBlock(messages: List<String>, onDismiss: () -> Unit) {
         TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_dismiss)) }
     }
 }
+
+/** Keeps "≈1.75 MB" in its own order inside Persian (RTL) text, which otherwise shows "MB 1.75≈". */
+private fun ltr(value: String) = "\u2066$value\u2069"
 
 internal fun formatBytes(bytes: Long): String {
     val kb = bytes / 1024.0

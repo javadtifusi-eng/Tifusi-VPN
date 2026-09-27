@@ -2,9 +2,9 @@ package com.tifusi.vpn.ui.home
 
 import android.app.Application
 import android.content.Intent
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import android.os.SystemClock
 import com.tifusi.vpn.data.AppSettings
 import com.tifusi.vpn.data.ConnectionReporter
 import com.tifusi.vpn.data.NetworkSnapshot
@@ -94,17 +94,27 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
         // Reconciles with the platform and drives the duration, traffic and speed readouts.
         viewModelScope.launch(Dispatchers.IO) {
-            var previous: TrafficStats? = null
+            // Recent (time, totals) samples. The rate spans the whole window over the real elapsed
+            // time, so a late tick does not inflate it and a one-second lull does not drop it to zero.
+            val samples = ArrayDeque<Pair<Long, TrafficStats>>()
             while (true) {
                 controller.refresh()
                 val state = _uiState.value
                 if (state.connectionState is VpnConnectionState.Connected) {
                     val stats = state.selectedProfile?.let(controller::trafficStats)
-                    // Per-tick deltas; TICK_INTERVAL_MS is one second, so bytes per second.
-                    val last = previous
-                    val down = if (stats != null && last != null) (stats.rxBytes - last.rxBytes).coerceAtLeast(0) else null
-                    val up = if (stats != null && last != null) (stats.txBytes - last.txBytes).coerceAtLeast(0) else null
-                    previous = stats
+                    var down: Long? = null
+                    var up: Long? = null
+                    if (stats != null) {
+                        val now = SystemClock.elapsedRealtime()
+                        samples.addLast(now to stats)
+                        while (samples.size > SPEED_WINDOW_SAMPLES) samples.removeFirst()
+                        val (then, first) = samples.first()
+                        val elapsedMs = now - then
+                        if (elapsedMs > 0) {
+                            down = ((stats.rxBytes - first.rxBytes).coerceAtLeast(0) * 1000 / elapsedMs)
+                            up = ((stats.txBytes - first.txBytes).coerceAtLeast(0) * 1000 / elapsedMs)
+                        }
+                    }
                     _uiState.update {
                         it.copy(
                             connectedSeconds = controller.connectedDurationSeconds(),
@@ -114,7 +124,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 } else {
-                    previous = null
+                    samples.clear()
                     if (state.connectedSeconds != 0L || state.trafficStats != null || state.internetChecked) {
                         _uiState.update {
                             it.copy(
@@ -264,6 +274,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val TICK_INTERVAL_MS = 1000L
+        private const val SPEED_WINDOW_SAMPLES = 3
         private const val MEMORY_INTERVAL_MS = 3_000L
         private const val INTERNET_CHECK_INTERVAL_MS = 15_000L
     }

@@ -11,6 +11,7 @@ import android.net.VpnManager
 import android.net.VpnProfileState
 import android.os.Build
 import androidx.annotation.RequiresApi
+import com.tifusi.vpn.data.AppSettings
 
 /**
  * Wraps android.net.VpnManager + Ikev2VpnProfile, the public API Android exposes (since API 30)
@@ -98,9 +99,12 @@ class Ikev2VpnManager(private val context: Context) {
             }
         }
 
-        // The platform default (1360) makes ESP-in-UDP packets that some mobile networks drop,
-        // stalling traffic after the tunnel is up. 1280 is the lowest value the platform allows.
-        builder.setMaxMtu(MIN_MTU)
+        // Pinning the floor (1280) throttled throughput: manual IKEv2 under Settings lets the
+        // platform run a larger MTU and so feels much faster. Use the user's setting instead
+        // (default 1400, matching the userspace engine, which connects fine at that size), and
+        // keep 1280 selectable for networks that drop larger ESP-in-UDP packets.
+        val mtu = AppSettings.load(context).mtu.coerceIn(MIN_MTU, MAX_TUNNEL_MTU)
+        builder.setMaxMtu(mtu)
 
         return builder.build()
     }
@@ -191,6 +195,10 @@ class Ikev2VpnManager(private val context: Context) {
     companion object {
         private const val DEFAULT_PSK_IDENTITY = "tifusi-vpn"
         private const val MIN_MTU = 1280
+
+        // The ceiling the userspace engine already uses successfully (CharonVpnService caps its
+        // own MTU at 1400), so the platform engine matches it rather than the throttled 1280 floor.
+        private const val MAX_TUNNEL_MTU = 1400
 
         fun isSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
     }

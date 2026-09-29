@@ -18,8 +18,9 @@ import org.strongswan.android.logic.CharonVpnService
 
 /**
  * Single entry point the UI uses to bring a tunnel up or down, regardless of protocol. Hides the
- * fact that IKEv2 goes through the built-in strongSwan engine ([CharonVpnService]), or for PSK
- * profiles, which strongSwan for Android cannot do, the platform VpnManager.
+ * fact that IKEv2 prefers the platform's kernel engine (android.net.VpnManager) for speed and
+ * falls back to the bundled strongSwan engine ([CharonVpnService]) on Android 10 and older or when
+ * the platform refuses a profile; see [connectIkev2WithFallback].
  *
  * [connect] and [disconnect] may block, so callers must invoke them off the main thread.
  */
@@ -97,7 +98,7 @@ class VpnController(private val context: Context) {
         beginAttempt(profile.protocol)
 
         return when (profile.protocol) {
-            VpnProtocol.IKEV2 -> if (usesBuiltInEngine(profile)) connectCharon(profile) else connectIkev2(profile)
+            VpnProtocol.IKEV2 -> connectIkev2WithFallback(profile)
             // Only IKEv2 is left; VLESS profiles are filtered out of the lists and cannot get here.
             VpnProtocol.VLESS -> {
                 fail(VpnFailure.Unknown("VLESS is not supported"))
@@ -214,25 +215,52 @@ class VpnController(private val context: Context) {
         }
     }
 
-    private fun connectIkev2(profile: VpnProfile): Intent? {
-        val manager = ikev2Manager ?: run {
-            // Only PSK profiles get here (the built-in engine takes the rest), and before
-            // Android 11 there is no platform IKEv2 client to run them on.
+    /**
+     * IKEv2 has two engines with very different speed. The platform's own client
+     * (android.net.VpnManager + Ikev2VpnProfile, API 30 / Android 11+) runs IPsec in the kernel
+     * with hardware-accelerated crypto — the same fast path a hand-made VPN under Settings uses —
+     * while the bundled strongSwan (charon) encrypts every packet in userspace on the CPU, which
+     * caps throughput on exactly the flagship phones whose links are fastest. So this prefers the
+     * platform engine and keeps charon only as the fallback: on Android 10 and older (no
+     * app-drivable IKEv2 client at all), and whenever the platform refuses a profile that charon's
+     * certreq=false handshake can still bring up (e.g. some self-signed servers). One APK, the fast
+     * path everywhere it exists, the old path where it does not.
+     */
+    private fun connectIkev2WithFallback(profile: VpnProfile): Intent? {
+        val manager = ikev2Manager
+        val isPsk = profile.ikev2AuthType == Ikev2AuthType.PSK
+        if (manager != null && platformCanRun(profile)) {
+            val consentIntent = try {
+                manager.provision(profile)
+            } catch (e: CertificateProblem) {
+                // The platform could not be told to trust this server; charon still can — except
+                // for PSK, which charon does not implement, so that one surfaces the real error.
+                if (isPsk) {
+                    fail(VpnFailure.Certificate(e))
+                    return null
+                }
+                return connectCharon(profile)
+            } catch (e: IllegalArgumentException) {
+                // Ikev2VpnProfile.Builder rejects malformed input (e.g. an unusable key) this way.
+                if (isPsk) {
+                    fail(VpnFailure.Unknown(e.message))
+                    return null
+                }
+                return connectCharon(profile)
+            }
+            return startPlatformSession(manager, consentIntent)
+        }
+        // No platform engine (Android 10 or older) or an unusable profile. charon cannot do PSK,
+        // so a PSK profile here has nowhere to run.
+        if (isPsk) {
             fail(VpnFailure.Unknown("PSK profiles need Android 11 or newer"))
             return null
         }
+        return connectCharon(profile)
+    }
 
-        val consentIntent = try {
-            manager.provision(profile)
-        } catch (e: CertificateProblem) {
-            fail(VpnFailure.Certificate(e))
-            return null
-        } catch (e: IllegalArgumentException) {
-            // Ikev2VpnProfile.Builder rejects malformed input (e.g. an unusable key) this way.
-            fail(VpnFailure.Unknown(e.message))
-            return null
-        }
-
+    /** Starts a provisioned platform profile, or returns the one-time consent Intent first. */
+    private fun startPlatformSession(manager: Ikev2VpnManager, consentIntent: Intent?): Intent? {
         // The consent dialog must be accepted before the provisioned profile can be started.
         if (consentIntent != null) return consentIntent
 
@@ -252,16 +280,13 @@ class VpnController(private val context: Context) {
         }
     }
 
-
-    /** The built-in engine takes username/password and certificate profiles (strongSwan for Android has no PSK). */
-    private fun usesBuiltInEngine(profile: VpnProfile): Boolean {
-        if (!CharonVpnService.isAvailable()) return false
-        val supported = when (profile.ikev2AuthType) {
-            Ikev2AuthType.USERNAME_PASSWORD -> !profile.username.isNullOrBlank()
-            Ikev2AuthType.CERTIFICATE -> !profile.pkcs12Base64.isNullOrBlank()
-            else -> false
-        }
-        return supported
+    /** Whether the platform engine has the credentials it needs for this profile's auth type. */
+    private fun platformCanRun(profile: VpnProfile): Boolean = when (profile.ikev2AuthType) {
+        Ikev2AuthType.USERNAME_PASSWORD -> !profile.username.isNullOrBlank()
+        Ikev2AuthType.CERTIFICATE ->
+            !profile.pkcs12Base64.isNullOrBlank() ||
+                (!profile.userCertPem.isNullOrBlank() && !profile.userPrivateKeyPem.isNullOrBlank())
+        Ikev2AuthType.PSK -> !profile.presharedKey.isNullOrBlank()
     }
 
     private fun connectCharon(profile: VpnProfile): Intent? {

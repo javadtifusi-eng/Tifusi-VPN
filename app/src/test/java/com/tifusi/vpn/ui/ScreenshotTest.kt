@@ -107,7 +107,6 @@ class ScreenshotTest(private val device: Device) {
                 trafficStats = com.tifusi.vpn.vpn.TrafficStats(rxBytes = 114_300_000, txBytes = 6_200_000),
                 internetChecked = true,
                 internetLatencyMs = 184,
-                memoryBytes = 61_000_000,
             ),
             onToggleConnection = {}, onDismissMessage = {},
         )

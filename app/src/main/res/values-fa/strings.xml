@@ -100,6 +100,8 @@
     <string name="legacy_title">تنظیم در تنظیمات اندروید</string>
     <string name="legacy_explanation">اندروید اجازه نمی‌دهد برنامه‌ها مستقیماً L2TP یا PPTP را وصل کنند. روی هر فیلد بزنید تا کپی شود، سپس در صفحه تنظیمات VPN بچسبانید.</string>
     <string name="open_vpn_settings">باز کردن تنظیمات VPN</string>
+    <string name="field_psk">کلید IPsec (PSK)</string>
+    <string name="l2tp_note">نوع را «L2TP/IPSec PSK» انتخاب کنید. اگر گوشی شما در تنظیمات VPN گزینه‌ی L2TP ندارد (بیشتر گوشی‌های اندروید ۱۲ به بعد)، از IKEv2 بالا استفاده کنید.</string>
     <string name="copied_to_clipboard">کپی شد</string>
 
     <!-- Connection failures -->

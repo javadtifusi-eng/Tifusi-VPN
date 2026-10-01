@@ -39,6 +39,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     // Declared before init, which starts the loop that uses it.
     private val latencyCheck = Mutex()
 
+    // Whether the app is on screen (TifusiApp follows the lifecycle). The readouts below are only
+    // worth polling for someone looking at them; platform connect/disconnect events still arrive
+    // through VpnEvents while the app is hidden, so nothing is missed by stopping.
+    private val foreground = MutableStateFlow(false)
+
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
@@ -98,6 +103,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             // time, so a late tick does not inflate it and a one-second lull does not drop it to zero.
             val samples = ArrayDeque<Pair<Long, TrafficStats>>()
             while (true) {
+                awaitWanted()
                 controller.refresh()
                 val state = _uiState.value
                 if (state.connectionState is VpnConnectionState.Connected) {
@@ -141,6 +147,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         // "Connected" only means the tunnel is up; this checks traffic really gets through it.
         viewModelScope.launch(Dispatchers.IO) {
             while (true) {
+                foreground.first { it }
                 if (_uiState.value.connectionState is VpnConnectionState.Connected) {
                     checkLatency()
                     delay(INTERNET_CHECK_INTERVAL_MS)
@@ -150,14 +157,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        viewModelScope.launch(Dispatchers.IO) {
-            while (true) {
-                // PSS of this process: the Xray core runs in it, so this is what the tunnel costs.
-                val bytes = runCatching { android.os.Debug.getPss() * 1024 }.getOrNull()
-                _uiState.update { it.copy(memoryBytes = bytes) }
-                delay(MEMORY_INTERVAL_MS)
-            }
-        }
+    }
+
+    /** Called by TifusiApp as the app comes on and goes off screen. */
+    fun setForeground(visible: Boolean) {
+        foreground.value = visible
+    }
+
+    // Poll while on screen, or while a connect attempt is pending so its timeout still fires.
+    private suspend fun awaitWanted() {
+        combine(foreground, controller.state) { fg, state -> fg || state is VpnConnectionState.Connecting }.first { it }
     }
 
     override fun onCleared() {
@@ -274,8 +283,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         // Five seconds: Android's traffic counters land in bursts every few seconds on some phones
         // (Samsung), so a shorter window kept dropping to zero between bursts.
         private const val SPEED_WINDOW_SAMPLES = 6
-        private const val MEMORY_INTERVAL_MS = 3_000L
-        private const val INTERNET_CHECK_INTERVAL_MS = 15_000L
+        // Each check is two small requests through the tunnel on the user's own data plan.
+        private const val INTERNET_CHECK_INTERVAL_MS = 30_000L
     }
 }
 
@@ -293,6 +302,4 @@ data class HomeUiState(
     /** Null after a check means traffic did not get through the tunnel. */
     val internetLatencyMs: Long? = null,
     val subscriptionInfo: SubscriptionInfo? = null,
-    /** This app's memory (the in-process core included), for the Home screen. */
-    val memoryBytes: Long? = null,
 )

@@ -79,9 +79,9 @@ fun AboutContent() {
     var update by remember { mutableStateOf<UpdateState>(UpdateState.Checking) }
     val support = telegramUsername(BuildConfig.SUPPORT_TELEGRAM)
 
-    suspend fun checkForUpdate() {
+    suspend fun checkForUpdate(force: Boolean) {
         update = UpdateState.Checking
-        val latest = withContext(Dispatchers.IO) { UpdateChecker.latestRelease() }
+        val latest = withContext(Dispatchers.IO) { UpdateChecker.latestRelease(context, force) }
         update = when {
             latest == null -> UpdateState.Failed
             latest.buildNumber > BuildConfig.VERSION_CODE -> UpdateState.Available(latest)
@@ -90,7 +90,8 @@ fun AboutContent() {
     }
 
     if (UpdateChecker.isEnabled) {
-        LaunchedEffect(Unit) { checkForUpdate() }
+        // At most once a day on its own (UpdateChecker remembers the answer); the button forces it.
+        LaunchedEffect(Unit) { checkForUpdate(force = false) }
     }
 
     Column(
@@ -114,7 +115,7 @@ fun AboutContent() {
                         is UpdateState.Available -> PillButton(stringResource(R.string.update_download), filled = true) {
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(state.release.downloadUrl))) }
                         }
-                        else -> PillButton(stringResource(R.string.update_check), filled = false) { scope.launch { checkForUpdate() } }
+                        else -> PillButton(stringResource(R.string.update_check), filled = false) { scope.launch { checkForUpdate(force = true) } }
                     }
                 }
             }
@@ -131,7 +132,7 @@ fun AboutContent() {
         BlackCard {
             Text(stringResource(R.string.about_protocols), color = TifusiTextSecondary, fontSize = 12.5.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("REALITY", "VLESS", "IKEv2").forEach {
+                listOf("IKEv2").forEach {
                     Text(
                         it,
                         color = TifusiNeonBlue,

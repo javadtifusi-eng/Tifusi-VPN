@@ -17,7 +17,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -71,6 +75,23 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
     val subscriptionState by subscriptionViewModel.state.collectAsStateWithLifecycle()
     val back: () -> Unit = { navController.popBackStack() }
 
+    // Home polls its readouts only while the app is on screen (see HomeViewModel.setForeground).
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> homeViewModel.setForeground(true)
+                Lifecycle.Event.ON_STOP -> homeViewModel.setForeground(false)
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            homeViewModel.setForeground(false)
+        }
+    }
+
     Scaffold(
         containerColor = TifusiBackground,
         bottomBar = {
@@ -105,6 +126,7 @@ fun TifusiApp(homeViewModel: HomeViewModel) {
                     onRefreshSubscription = subscriptionViewModel::refresh,
                     onRemoveSubscription = subscriptionViewModel::remove,
                     onScanQr = { navController.navigate(ROUTE_SCAN_QR) },
+                    l2tp = homeState.subscriptionInfo?.l2tp.orEmpty(),
                 )
             }
 

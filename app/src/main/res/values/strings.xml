@@ -100,6 +100,8 @@
     <string name="legacy_title">Set up in Android Settings</string>
     <string name="legacy_explanation">Android does not allow apps to connect L2TP or PPTP directly. Tap a field to copy it, then paste it into the VPN settings screen.</string>
     <string name="open_vpn_settings">Open VPN Settings</string>
+    <string name="field_psk">IPsec pre-shared key (PSK)</string>
+    <string name="l2tp_note">Type: L2TP/IPSec PSK. If your phone has no L2TP in its VPN settings (most phones on Android 12 and newer), use IKEv2 above.</string>
     <string name="copied_to_clipboard">Copied</string>
 
     <!-- Connection failures -->

@@ -27,6 +27,12 @@ sealed class SubscriptionError(message: String) : Exception(message) {
 }
 
 /** The account limits the panel reported with the subscription, as of [fetchedAtMs]. */
+/**
+ * An L2TP/IPsec login from the panel. Android gives apps no way to run L2TP, so the app only shows
+ * these for the user to copy into the phone's own VPN settings.
+ */
+data class L2tpAccess(val remark: String, val server: String, val psk: String?, val username: String, val password: String)
+
 data class SubscriptionInfo(
     val username: String?,
     val status: String?,
@@ -36,6 +42,7 @@ data class SubscriptionInfo(
     /** Null means unlimited data. */
     val limitBytes: Long?,
     val fetchedAtMs: Long,
+    val l2tp: List<L2tpAccess> = emptyList(),
 ) {
     fun toJson(): String = JSONObject().apply {
         put("username", username)
@@ -44,6 +51,9 @@ data class SubscriptionInfo(
         put("used", usedBytes)
         put("limit", limitBytes)
         put("fetchedAt", fetchedAtMs)
+        put("l2tp", JSONArray().apply {
+            l2tp.forEach { put(JSONObject().put("remark", it.remark).put("server", it.server).put("psk", it.psk).put("username", it.username).put("password", it.password)) }
+        })
     }.toString()
 
     companion object {
@@ -56,8 +66,25 @@ data class SubscriptionInfo(
                 usedBytes = json.optLong("used"),
                 limitBytes = if (json.isNull("limit")) null else json.optLong("limit"),
                 fetchedAtMs = json.optLong("fetchedAt"),
+                l2tp = parseL2tp(json.optJSONArray("l2tp")),
             )
         }.getOrNull()
+
+        /** The panel's app.json "l2tp" list, also how it is saved; entries missing a field are skipped. */
+        fun parseL2tp(array: JSONArray?): List<L2tpAccess> =
+            if (array == null) emptyList() else (0 until array.length()).mapNotNull { i ->
+                val o = array.optJSONObject(i) ?: return@mapNotNull null
+                val server = o.optString("server").takeIf { it.isNotBlank() && it != "null" } ?: return@mapNotNull null
+                val user = o.optString("username").takeIf { it.isNotBlank() && it != "null" } ?: return@mapNotNull null
+                val pass = o.optString("password").takeIf { it.isNotBlank() && it != "null" } ?: return@mapNotNull null
+                L2tpAccess(
+                    remark = o.optString("remark").takeIf { it.isNotBlank() && it != "null" } ?: "L2TP",
+                    server = server,
+                    psk = o.optString("psk").takeIf { it.isNotBlank() && it != "null" },
+                    username = user,
+                    password = pass,
+                )
+            }
     }
 }
 
@@ -220,8 +247,8 @@ object SubscriptionClient {
     private fun httpGet(url: String, accept: String): HttpResult {
         try {
             val connection = URL(url).openConnection() as HttpURLConnection
-            connection.connectTimeout = TIMEOUT_MS
-            connection.readTimeout = TIMEOUT_MS
+            connection.connectTimeout = CONNECT_TIMEOUT_MS
+            connection.readTimeout = READ_TIMEOUT_MS
             connection.setRequestProperty("Accept", accept)
             connection.setRequestProperty("User-Agent", "TifusiVPN-Android")
             try {
@@ -330,6 +357,7 @@ object SubscriptionClient {
         usedBytes = json.optLong("used_traffic"),
         limitBytes = if (json.isNull("data_limit") || !json.has("data_limit")) null else json.optLong("data_limit"),
         fetchedAtMs = System.currentTimeMillis(),
+        l2tp = SubscriptionInfo.parseL2tp(json.optJSONArray("l2tp")),
     )
 
     private fun JSONArray?.objects(): List<JSONObject> =
@@ -341,7 +369,10 @@ object SubscriptionClient {
     private fun JSONObject.str(key: String): String? =
         if (has(key) && !isNull(key)) optString(key).takeIf { it.isNotBlank() } else null
 
-    private const val TIMEOUT_MS = 15_000
+    // A panel that has not even accepted the connection in 8 s will not answer in 15 either; the user
+    // is watching a spinner, and app.json plus the plain-subscription fallback can make two requests.
+    private const val CONNECT_TIMEOUT_MS = 8_000
+    private const val READ_TIMEOUT_MS = 12_000
     // The best-effort IKEv2-from-page fetch: kept short so it can't stall a refresh.
     private const val PAGE_TIMEOUT_MS = 4_000
     private const val PAGE_HEAD_LIMIT = 256 * 1024

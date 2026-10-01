@@ -3,6 +3,7 @@ package com.tifusi.vpn.ui.servers
 import com.tifusi.vpn.vpn.Pinger
 import com.tifusi.vpn.data.TunnelSettings
 import com.tifusi.vpn.data.AppSettings
+import com.tifusi.vpn.data.L2tpAccess
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,6 +35,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -84,6 +86,7 @@ fun ServersScreen(
     onRefreshSubscription: () -> Unit,
     onRemoveSubscription: () -> Unit,
     onScanQr: () -> Unit,
+    l2tp: List<L2tpAccess> = emptyList(),
 ) {
     var pendingDelete by remember { mutableStateOf<VpnProfile?>(null) }
     var confirmRemoveSubscription by remember { mutableStateOf(false) }
@@ -198,6 +201,9 @@ fun ServersScreen(
                             }
                         }
                     }
+                }
+                l2tp.forEach { access ->
+                    item(key = "l2tp:${access.server}:${access.username}") { L2tpCard(access) }
                 }
                 item { Spacer(Modifier.height(8.dp)) }
             }
@@ -575,3 +581,55 @@ private fun probe(context: android.content.Context, profile: VpnProfile, setting
 /** IKEv2 by its daemon's answer. */
 private fun pingable(profile: VpnProfile) = profile.protocol == VpnProtocol.IKEV2
 
+/**
+ * L2TP/IPsec login for the phone's own VPN settings. Android lets apps run IKEv2 through the
+ * platform but offers nothing for L2TP, so the app shows the four fields to copy and opens the
+ * settings screen; phones that no longer list L2TP there (most on Android 12+) are told to use IKEv2.
+ */
+@Composable
+private fun L2tpCard(access: L2tpAccess) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val copied = stringResource(R.string.copied_to_clipboard)
+    val fields = buildList {
+        add(stringResource(R.string.field_server_address) to access.server)
+        add(stringResource(R.string.field_username) to access.username)
+        add(stringResource(R.string.field_password) to access.password)
+        access.psk?.let { add(stringResource(R.string.field_psk) to it) }
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(TifusiSurface)
+            .border(1.dp, TifusiCardBorder, RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("L2TP · " + stringResource(R.string.legacy_title), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.legacy_explanation), color = TifusiTextSecondary, fontSize = 12.5.sp)
+        fields.forEach { (label, value) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable {
+                        clipboard.setText(AnnotatedString(value))
+                        android.widget.Toast.makeText(context, copied, android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    .padding(vertical = 8.dp, horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(label, color = TifusiTextSecondary, fontSize = 12.5.sp, modifier = Modifier.weight(1f))
+                Text(value, fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = TifusiNeonBlue)
+            }
+        }
+        OutlinedButton(
+            onClick = { runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_VPN_SETTINGS)) } },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.open_vpn_settings))
+        }
+        Text(stringResource(R.string.l2tp_note), color = TifusiTextSecondary, fontSize = 11.5.sp)
+    }
+}

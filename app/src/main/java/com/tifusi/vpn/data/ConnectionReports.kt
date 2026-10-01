@@ -278,7 +278,8 @@ object ConnectionReporter {
      * The panel that issued the saved subscription: everything before `/sub/` or `/code/` in its
      * endpoint, so a panel served under a path prefix still works.
      */
-    private fun panelBase(subscription: String): String? {
+    /** Scheme and host the subscription link lives on; the app talks to the panel only there. */
+    fun panelBase(subscription: String): String? {
         val endpoint = SubscriptionClient.normalize(subscription)
         val base = endpoint?.let {
             val cut = maxOf(it.lastIndexOf("/sub/"), it.lastIndexOf("/code/"))
